@@ -1,0 +1,15 @@
+html body{
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+.board{
+  margin: auto;
+  text-align: center;
+  background: lightblue;
+}
+#canvas{
+  background-image: url('../img/background.png');
+  background-size: cover;
+  
+}
