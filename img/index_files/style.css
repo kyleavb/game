@@ -7,18 +7,10 @@ html body{
   margin: auto;
   text-align: center;
   background: lightblue;
-
-}
-#background{
-  position: absolute;
   background-size: cover;
-  background-attachment: fixed;
   background-image: url('../img/background.png');
+}
+#canvas{
 
-}
-#action{
-  position: absolute;
-}
-#ui{
 
 }
