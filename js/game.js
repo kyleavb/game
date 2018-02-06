@@ -18,6 +18,7 @@ play1.height = $(window).innerHeight();
 play2.height = $(window).innerHeight();;
 monster.height = $(window).innerHeight();;
 ui.height = $(window).innerHeight();
+var landable = [];
 
 //Image Loader
 //----------------Player1 Image -----------------------------
@@ -46,12 +47,30 @@ var player2RunRight = new Image;
 player2RunRight.src = "img/player2/player2RunRight.png";
 var player2RunLeft = new Image;
 player2RunLeft.src = "img/player2/player2RunLeft.png"
+//----------------Game Images -----------------------------
+var groundTile = new Image;
+groundTile.src = "img/ground/Tile_11.png"
 
+//ground object constructor
+function groundObject(options){
+  var that = {};
+  that.yStart = options.yStart,
+  that.xStart = options.xStart,
+  that.yEnd = options.yEnd,
+  that.xEnd = options.xEnd
+
+  return that;
+}
+//sprite constructor
 function sprite(options){
   var that = {};
-  //Positional things
   that.x = options.x,
   that.y = options.y,
+  that.speedX = 0,
+  that.speedY = 0,
+  that.gravity = .1,
+  that.gravitySpeed = 0,
+  that.onGround = options.onGround,
   frameIndex = 0,
   that.tickCount = 0,
   that.move = options.move,
@@ -82,6 +101,7 @@ function sprite(options){
   },
 
   that.update = function(){
+    updatePosition(that);
     this.tickCount += 1;
     if(that.tickCount >= that.ticksPerFrame){
       that.tickCount =0;
@@ -96,17 +116,33 @@ function sprite(options){
 }
 
 function updatePosition(obj){
-    //update velocity
-    obj.vx += obj.ax;
-    obj.vy += obj.ay;
+  for(var i=0; i<landable.length; i++){
+    if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y > landable[i].yStart && obj.y < landable[i].yEnd){
+      obj.onGround = true;
+    }
+  }
+  //gravity force
+  if(!obj.onGround){
+    obj.gravitySpeed += obj.gravity;
+    obj.x += obj.speedX;
+    obj.y += obj.speedY + obj.gravitySpeed;
+  }
+}
 
-    //cheat's friction (friction = 0.97)
-    obj.vx *= friction;
-    obj.vy *= friction;
-
-    //update position
-    obj.x += obj.vx;
-    obj.y += obj.vy;
+function drawGround(){
+  var numOfTile = background.width / 256;
+  var tilePos = 0;
+  for(var i=0; i<= numOfTile; i++){
+    ctxBack.drawImage(groundTile, tilePos, background.height - 200);
+    tilePos += 255;
+  }
+  var floor = groundObject({
+    yStart: 0,
+    xStart: background.height - 200,
+    yEnd: tilePos,
+    xEnd: background.height - 200
+  })
+  landable.push(floor);
 }
 
 function gameInit(){
@@ -116,7 +152,9 @@ function gameInit(){
 }
 
 function gameLoop(){
+  player1.context.clearRect(player1.x,player1.y, player1.width, player1.height);
   player1.update();
+  player2.context.clearRect(player2.x,player1.y, player2.width, player2.height);
   player2.update();
   player1.render();
   player2.render();
@@ -125,7 +163,7 @@ function gameLoop(){
 
 var player1 = sprite({
   x: 30,
-  y: ($(window).innerHeight()-150),
+  y: 0,
   context: ctxPlay1,
   width: 46,
   height: 879,
@@ -133,12 +171,13 @@ var player1 = sprite({
   numberOfFrames: 10,
   ticksPerFrame: 4,
   loop: true,
-  facing: "right"
+  facing: "right",
+  onGround: false
 });
 
 var player2 = sprite({
   x: 30,
-  y: ($(window).innerHeight()-150),
+  y: 0,
   context: ctxPlay2,
   width: 58,
   height: 1000,
@@ -146,22 +185,21 @@ var player2 = sprite({
   numberOfFrames: 10,
   ticksPerFrame: 20,
   loop: true,
-  facing: "right"
+  facing: "right",
+  onGround: false
 });
 
 //When finished loading last image, run gameLoop
 player1RunLeft.onload = function(){
   player2.render();
   player1.render();
+  drawGround();
   gameLoop();
 }
 
 //KeyInput function
 $(document).keydown(function(e){
-  console.log(e.keyCode);
-//---------------------Player1 Key Set-------------------
   if(e.keyCode === 39){//move right
-    player1.context.clearRect(player1.x,player1.y, player1.width, player1.height);
     player1.image = player1RunRight;
     player1.facing = "right";
     player1.loop = true;
@@ -169,7 +207,7 @@ $(document).keydown(function(e){
     player1.width = 72;
     player1.height = 917;
     player1.move = true;
-    player1.moveSpeed = 10;
+    player1.moveSpeed = 5;
   }
   if(e.keyCode === 37){//move left
     player1.context.clearRect(player1.x,player1.y, player1.width, player1.height);
@@ -180,7 +218,7 @@ $(document).keydown(function(e){
     player1.width = 72;
     player1.height = 917;
     player1.move = true;
-    player1.moveSpeed = -10;
+    player1.moveSpeed = -5;
   }
   if(e.keyCode === 32){ //Attack
     player1.context.clearRect(player1.x,player1.y, player1.width, player1.height);
@@ -202,7 +240,6 @@ $(document).keydown(function(e){
   if(e.keyCode === 40){//Down key
 
   }
-//---------------------Player2 Key Set-------------------
   if(e.keyCode === 68){//right D key
     player2.context.clearRect(player2.x,player1.y, player2.width, player2.height);
     player2.image = player2RunRight;
@@ -212,7 +249,7 @@ $(document).keydown(function(e){
     player2.width = 75;
     player2.height = 1041;
     player2.move = true;
-    player2.moveSpeed = 10;
+    player2.moveSpeed = 5;
   }
   if(e.keyCode === 65){//Left A key
     player2.context.clearRect(player2.x,player1.y, player2.width, player2.height);
@@ -223,7 +260,7 @@ $(document).keydown(function(e){
     player2.width = 75;
     player2.height = 1041;
     player2.move = true;
-    player2.moveSpeed = -10;
+    player2.moveSpeed = -5;
   }
   if(e.keyCode === 70){
     if(player2.facing === "right"){
