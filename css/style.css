@@ -16,7 +16,13 @@ html body{
   background-image: url('../img/background.png');
 
 }
-#action{
+#play1{
+  position: absolute;
+}
+#play2{
+  position: absolute;
+}
+#monster{
   position: absolute;
 }
 #ui{
