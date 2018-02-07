@@ -14,6 +14,7 @@ for(var i=0;i<canvas.length;i++){
   canvas[i].height = $(window).innerHeight();
 }
 var landable = [];
+var currentEnemy = [];
 var gravity = .5;
 var friction = 0.97;
 
@@ -44,9 +45,16 @@ var player2RunRight = new Image;
 player2RunRight.src = "img/player2/player2RunRight.png";
 var player2RunLeft = new Image;
 player2RunLeft.src = "img/player2/player2RunLeft.png"
+//----------------Enemery Images -----------------------------
+//Male
+var maleZomRight = new Image;
+maleZomRight.src = "img/maleZombie/maleZombieRight.png";
+var maleZomLeft = new Image;
+maleZomLeft.src = "img/maleZombie/maleZombieLeft.png";
 //----------------Game Images -----------------------------
 var groundTile = new Image;
 groundTile.src = "img/ground/Tile_11.png"
+
 
 //ground object constructor
 function groundObject(options){
@@ -72,7 +80,7 @@ function sprite(options){
   that.facing = "right";
   frameIndex = 0,
   that.tickCount = 0,
-  that.ticksPerFrame = options.ticksPerFrame,
+  that.ticksPerFrame = 3;
   that.numberOfFrames = options.numberOfFrames,
   that.loop = options.loop,
   that.context = options.context,
@@ -150,6 +158,23 @@ function createGround(){
   }
 }
 
+function spawnEnemy(){
+  var temp = sprite({
+    x: 200,
+    y: 30,
+    context: ctxMonster,
+    imgWidth: 86,
+    imgHeight: 1039,
+    img: maleZomRight,
+    numberOfFrames: 10,
+    loop: true,
+    facing: "right",
+    onGround: false,
+    move: false
+  });
+  currentEnemy.push(temp);
+}
+
 function updateGround(){
   //nove griound when needed
 }
@@ -159,6 +184,14 @@ function gameLoop(){
     updateGround(item);
     ctxBack.drawImage(item.img, item.xStart, item.yStart)
   });
+  console.log("loop");
+  while (currentEnemy.length < 3){
+    spawnEnemy()a;
+  }
+  for(var i=0;i<currentEnemy.length; i++){
+    currentEnemy[i].update();
+    currentEnemy[i].render();
+  }
   player1.context.clearRect(player1.x,player1.y, player1.imgWidth, player1.imgHeight);
   player1.update();
   player2.context.clearRect(player2.x,player1.y, player2.imgWidth, player2.imgHeight);
@@ -176,7 +209,6 @@ var player1 = sprite({
   imgHeight: 879,
   img: player1IdleRight,
   numberOfFrames: 10,
-  ticksPerFrame: 4,
   loop: true,
   facing: "right",
   onGround: false,
@@ -191,7 +223,6 @@ var player2 = sprite({
   imgHeight: 1000,
   img: player2IdleRight,
   numberOfFrames: 10,
-  ticksPerFrame: 20,
   loop: true,
   facing: "right",
   onGround: false,
@@ -211,7 +242,6 @@ $(document).keydown(function(e){
     player1.img = player1RunRight;
     player1.facing = "right";
     player1.loop = true;
-    player1.ticksPerFrame = 4;
     player1.imgWidth = 72;
     player1.imgHeight = 917;
   }
@@ -219,7 +249,6 @@ $(document).keydown(function(e){
     player1.img = player1RunLeft;
     player1.facing = "left";
     player1.loop = true;
-    player1.ticksPerFrame = 4;
     player1.imgWidth = 72;
     player1.imgHeight = 917;
     player1.move = true;
@@ -232,7 +261,6 @@ $(document).keydown(function(e){
       player1.img = player1AttackLeft;
     }
     player1.loop = true;
-    player1.ticksPerFrame = 4;
     player1.imgWidth = 107;
     player1.imgHeight = 991;
     player1.move = false;
@@ -240,7 +268,6 @@ $(document).keydown(function(e){
   }
   if(e.keyCode === 38){//up key
     player1.loop = false;
-    player1.ticksPerFrame = 4;
     player1.imgWidth = 107;
     player1.imgHeight = 991;
     player1.isJumping = true;
@@ -252,7 +279,6 @@ $(document).keydown(function(e){
     player2.img = player2RunRight;
     player2.facing = "right";
     player2.loop = true;
-    player2.ticksPerFrame = 4;
     player2.imgWidth = 75;
     player2.imgHeight = 1041;
     player2.move = true;
@@ -262,7 +288,6 @@ $(document).keydown(function(e){
     player2.img = player2RunLeft;
     player2.facing = "left";
     player2.loop = true;
-    player2.ticksPerFrame = 4;
     player2.imgWidth = 75;
     player2.imgHeight = 1041;
     player2.move = true;
@@ -274,7 +299,6 @@ $(document).keydown(function(e){
       player2.img = player2AttackLeft;
     }
     player2.loop = true;
-    player2.ticksPerFrame = 4;
     player2.imgWidth = 104;
     player2.imgHeight = 1137;
     player2.move = false;
@@ -293,7 +317,6 @@ $(document).keyup(function(e){
       player1.img = player1IdleLeft;
     }
     player1.loop = true;
-    player1.ticksPerFrame = 4;
     player1.imgWidth = 46;
     player1.imgHeight = 879;
     player1.move = false
@@ -306,7 +329,6 @@ $(document).keyup(function(e){
       player2.img = player2IdleLeft;
     }
     player2.loop = true;
-    player2.ticksPerFrame = 4;
     player2.imgWidth = 58;
     player2.imgHeight = 1001;
     player2.move = false
