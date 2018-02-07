@@ -15,9 +15,10 @@ for(var i=0;i<canvas.length;i++){
 }
 var landable = [];
 var currentEnemy = [];
-var gravity = .5;
-var friction = 0.97;
-
+var gravity = .95;
+var friction = 0.98;
+ctxUi.font = "12px Arial";
+ctxUi.fillStyle = "red";
 //Image Loader
 //----------------Player1 Image -----------------------------
 var player1AttackRight = new Image;
@@ -74,35 +75,40 @@ function sprite(options){
   that.vX = 0;
   that.vY = 0;
   that.move = false;
-  that.onGround = options.onGround,
-  that.isJumping = false,
+  that.onGround = options.onGround;
+  that.attacking = false;
+  that.isJumping = false;
   that.life = 3,
   that.facing = "right";
   frameIndex = 0,
   that.tickCount = 0,
-  that.ticksPerFrame = 3;
+  that.ticksPerFrame = 5;
   that.numberOfFrames = options.numberOfFrames,
   that.loop = options.loop,
   that.context = options.context,
-  that.imgWidth = options.imgWidth,
-  that.imgHeight = options.imgHeight,
+  that.idleRight = options.idleRight,
+  that.idleLeft = options.idleLeft,
+  that.runRight = options.runRight,
+  that.runLeft = options.runLeft,
+  that.attackLeft = options.attackLeft,
+  that.attackRight = options.attackRight,
   that.img = options.img,
+
 
   that.render = function(){
     that.context.drawImage(
       that.img,
       0,//Source Start X
-      frameIndex * that.imgHeight / that.numberOfFrames, // Source Start Y
-      that.imgWidth,//Soruce xSize
-      that.imgHeight / that.numberOfFrames,//sorce ySize height
+      frameIndex * that.img.height / that.numberOfFrames, // Source Start Y
+      that.img.width,//Soruce xSize
+      that.img.height / that.numberOfFrames,//sorce ySize height
       that.x,
       that.y,
-      that.imgWidth,
-      that.imgHeight / that.numberOfFrames);
+      that.img.width,
+      that.img.height / that.numberOfFrames);
   },
 
   that.update = function(){
-    updatePosition(that);
     this.tickCount += 1;
     if(that.tickCount >= that.ticksPerFrame){
       that.tickCount =0;
@@ -112,6 +118,7 @@ function sprite(options){
         frameIndex =0;
       }
     }
+    updatePosition(that);
   }
   return that;
 }
@@ -123,22 +130,22 @@ function updatePosition(obj){
       obj.vY = 0;
     }
   }
-  if(obj.move){
-    if(obj.facing === "right"){
-      obj.vX += .5;
-    }else{
-      obj.vX -= .5;
-    }
-    obj.vY += 0;
-    obj.vX *= friction;
-    obj.vY *= friction;
-    obj.x += obj.vX;
-    obj.y += obj.vY;
-  }
+  obj.vX *= friction;
+  obj.vY *= friction;
+  obj.vX *= gravity;
+  obj.vY *= gravity;
+  obj.x += obj.vX;
+  obj.y += obj.vY;
   //Falling
   if(!obj.onGround){
     obj.vY += gravity;
     obj.y += obj.vY;
+  }
+  if(Math.round(obj.vX) === 0){
+    obj.vX = 0
+    obj.img = obj.idleRight;
+    obj.imgWidth = obj.img.width;
+    obj.imgHeight = obj.img.height;
   }
 }
 
@@ -179,27 +186,42 @@ function updateGround(){
   //nove griound when needed
 }
 
+
+
+
+
+
 function gameLoop(){
   landable.forEach(function(item){
     updateGround(item);
     ctxBack.drawImage(item.img, item.xStart, item.yStart)
   });
-  console.log("loop");
-  while (currentEnemy.length < 3){
-    spawnEnemy()a;
-  }
+  // while (currentEnemy.length < 1){
+  //   spawnEnemy();
+  // }
   for(var i=0;i<currentEnemy.length; i++){
     currentEnemy[i].update();
     currentEnemy[i].render();
   }
-  player1.context.clearRect(player1.x,player1.y, player1.imgWidth, player1.imgHeight);
+  ctxUi.clearRect(0,0,ui.width,ui.height);
+
+  //---Debug Display
+  ctxUi.fillText("Player1 Pos: ("+ player1.x.toFixed(3) + ", " + player1.y.toFixed(3) + ")",10,50);
+  ctxUi.fillText("Player1 Velocity: ("+ player1.vX + ", " + player1.vY + ")",10,65);
+  ctxUi.strokeText("Player2 Pos: (X: "+ player2.x.toFixed(3) + ", Y: " + player2.y.toFixed(3) + ")",300,50);
+  ctxUi.strokeText("Player2 Velocity: (X: "+ player2.vX + ", Y: " + player2.vY.toFixed(3) + ")",300,65);
+  //---Debug Display
+  player1.context.clearRect(0,0, play1.width, play1.height);
+  player2.context.clearRect(0,0, play2.width, play2.height);
   player1.update();
-  player2.context.clearRect(player2.x,player1.y, player2.imgWidth, player2.imgHeight);
   player2.update();
   player1.render();
   player2.render();
   window.requestAnimationFrame(gameLoop);
 }
+
+
+
 
 var player1 = sprite({
   x: 30,
@@ -212,7 +234,13 @@ var player1 = sprite({
   loop: true,
   facing: "right",
   onGround: false,
-  move: false
+  move: false,
+  idleLeft: player1IdleLeft,
+  idleRight: player1IdleRight,
+  runLeft: player1RunLeft,
+  runRight: player1RunRight,
+  attackLeft: player1AttackLeft,
+  attackRight: player1AttackRight
 });
 
 var player2 = sprite({
@@ -226,7 +254,13 @@ var player2 = sprite({
   loop: true,
   facing: "right",
   onGround: false,
-  move: false
+  move: false,
+  idleLeft: player2IdleLeft,
+  idleRight: player2IdleRight,
+  runLeft: player2RunLeft,
+  runRight: player2RunRight,
+  attackLeft: player2AttackLeft,
+  attackRight: player2AttackRight
 });
 //When finished loading last image, run gameLoop
 player1RunLeft.onload = function(){
@@ -239,70 +273,31 @@ player1RunLeft.onload = function(){
 //KeyInput function
 $(document).keydown(function(e){
   if(e.keyCode === 39){//move right
-    player1.img = player1RunRight;
-    player1.facing = "right";
-    player1.loop = true;
-    player1.imgWidth = 72;
-    player1.imgHeight = 917;
+
   }
   if(e.keyCode === 37){//move left
-    player1.img = player1RunLeft;
-    player1.facing = "left";
-    player1.loop = true;
-    player1.imgWidth = 72;
-    player1.imgHeight = 917;
-    player1.move = true;
-    player1.moveSpeed = -5;
+
   }
   if(e.keyCode === 32){ //Attack
-    if(player1.facing === "right"){
-      player1.img = player1AttackRight;
-    }else{
-      player1.img = player1AttackLeft;
-    }
-    player1.loop = true;
-    player1.imgWidth = 107;
-    player1.imgHeight = 991;
-    player1.move = false;
-    player1.moveSpeed = 0;
+
   }
   if(e.keyCode === 38){//up key
-    player1.loop = false;
-    player1.imgWidth = 107;
-    player1.imgHeight = 991;
-    player1.isJumping = true;
+
   }
   if(e.keyCode === 40){//Down key
 
   }
   if(e.keyCode === 68){//right D key
+    player2.vX += 3;
     player2.img = player2RunRight;
-    player2.facing = "right";
-    player2.loop = true;
-    player2.imgWidth = 75;
-    player2.imgHeight = 1041;
-    player2.move = true;
-    player2.moveSpeed = 5;
+
   }
   if(e.keyCode === 65){//Left A key
+    player2.vX -= 3;
     player2.img = player2RunLeft;
-    player2.facing = "left";
-    player2.loop = true;
-    player2.imgWidth = 75;
-    player2.imgHeight = 1041;
-    player2.move = true;
   }
   if(e.keyCode === 70){
-    if(player2.facing === "right"){
-      player2.img = player2AttackRight;
-    }else{
-      player2.img = player2AttackLeft;
-    }
-    player2.loop = true;
-    player2.imgWidth = 104;
-    player2.imgHeight = 1137;
-    player2.move = false;
-    player2.moveSpeed = 0;
+
   }
 
 });
@@ -311,27 +306,11 @@ $(document).keyup(function(e){
   player1.context.clearRect(player1.x,player1.y, player1.imgWidth, player1.imgHeight);
   player2.context.clearRect(player2.x,player1.y, player2.imgWidth, player2.imgHeight);
   if(e.keyCode === 40 || e.keyCode === 37 || e.keyCode === 38 || e.keyCode === 39 || e.keyCode === 32){
-    if (player1.facing === "right") {
-      player1.img = player1IdleRight;
-    }else{
-      player1.img = player1IdleLeft;
-    }
-    player1.loop = true;
-    player1.imgWidth = 46;
-    player1.imgHeight = 879;
-    player1.move = false
-    //player1.vX = 0;
+
   }
   if(e.keyCode === 87 || e.keyCode === 65 || e.keyCode === 83 || e.keyCode === 68 || e.keyCode === 70){
-    if (player2.facing === "right") {
-      player2.img = player2IdleRight;
-    }else{
-      player2.img = player2IdleLeft;
-    }
-    player2.loop = true;
-    player2.imgWidth = 58;
-    player2.imgHeight = 1001;
-    player2.move = false
-    //dplayer2.vX = 0;
+
+  }
+  if(e.keyCode === 65){
   }
 });
