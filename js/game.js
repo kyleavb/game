@@ -10,29 +10,35 @@ var ui = document.getElementById("ui");
 var ctxUi = ui.getContext("2d");
 var canvas = $(".game");
 for(var i=0;i<canvas.length;i++){
-  canvas[i].width = $(window).innerWidth();
-  canvas[i].height = $(window).innerHeight();
+  canvas[i].width = $(window).innerWidth()-30;
+  canvas[i].height = $(window).innerHeight()-30;
 }
+var playerMoveSpeed = 3;
+var playerJumpSpeed = 25;
 var landable = [];
 var currentEnemy = [];
-var gravity = .95;
-var friction = 0.98;
+var gravity = 1;
+var friction = 0.96;
 ctxUi.font = "12px Arial";
 ctxUi.fillStyle = "red";
 //Image Loader
 //----------------Player1 Image -----------------------------
 var player1AttackRight = new Image;
-player1AttackRight.src = "img/player1/player1AttackRight.png"
+player1AttackRight.src = "img/player1/player1AttackRight.png";
 var player1AttackLeft = new Image;
-player1AttackLeft.src = "img/player1/player1AttackLeft.png"
+player1AttackLeft.src = "img/player1/player1AttackLeft.png";
 var player1IdleRight = new Image;
-player1IdleRight.src = "img/player1/player1IdleRight.png"
+player1IdleRight.src = "img/player1/player1IdleRight.png";
 var player1IdleLeft = new Image;
-player1IdleLeft.src = "img/player1/player1IdleLeft.png"
+player1IdleLeft.src = "img/player1/player1IdleLeft.png";
 var player1RunRight = new Image;
 player1RunRight.src = "img/player1/player1RunRight.png";
 var player1RunLeft = new Image;
-player1RunLeft.src = "img/player1/player1RunLeft.png"
+player1RunLeft.src = "img/player1/player1RunLeft.png";
+var player1JumpRight = new Image;
+player1JumpRight.src = "img/player1/player1JumpRight.png";
+var player1JumpLeft = new Image;
+player1JumpLeft.src = "img/player1/player1JumpLeft.png";
 //----------------Player2 Image -----------------------------
 var player2AttackRight = new Image;
 player2AttackRight.src = "img/player2/player2AttackRight.png"
@@ -77,6 +83,7 @@ function sprite(options){
   that.move = false;
   that.onGround = options.onGround;
   that.attacking = false;
+  that.canJump = true;
   that.isJumping = false;
   that.life = 3,
   that.facing = "right";
@@ -84,7 +91,7 @@ function sprite(options){
   that.tickCount = 0,
   that.ticksPerFrame = 5;
   that.numberOfFrames = options.numberOfFrames,
-  that.loop = options.loop,
+  that.loop = true,
   that.context = options.context,
   that.idleRight = options.idleRight,
   that.idleLeft = options.idleLeft,
@@ -92,8 +99,9 @@ function sprite(options){
   that.runLeft = options.runLeft,
   that.attackLeft = options.attackLeft,
   that.attackRight = options.attackRight,
+  that.jumpLeft = options.jumpLeft,
+  that.jumpRight = options.jumpRight,
   that.img = options.img,
-
 
   that.render = function(){
     that.context.drawImage(
@@ -119,33 +127,62 @@ function sprite(options){
       }
     }
     updatePosition(that);
+    if(this.attacking){
+      var hits = []
+      checkCollisions(this, hits);
+    }
   }
   return that;
 }
 
+function checkCollisions(obj, hits){
+  var rect1 = {
+    x:obj.x,
+    y:obj.y,
+    width:obj.img.width,
+    height: obj.img.height
+  }
+  currentEnemy.forEach(function(item){
+    var rect2 = {x: item.x, y:item.y, width: item.img.width,height: item.img.height}
+    if (rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y) {
+      hits.push(item);
+    }
+  })
+}
+
 function updatePosition(obj){
-  for(var i=0; i<landable.length; i++){
-    if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y > landable[i].yEnd){
+  for(var i=0; i<landable.length; i++){//Detect Landable
+    if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y>landable[i].yStart && obj.y > landable[i].yEnd && !obj.isJumping){
       obj.onGround = true;
       obj.vY = 0;
     }
   }
+  if(obj.x > play1.width - 30){
+    obj.vX  -= 7
+  }else if(obj.x < 0){
+    obj.vX += 7
+  }
   obj.vX *= friction;
   obj.vY *= friction;
-  obj.vX *= gravity;
   obj.vY *= gravity;
   obj.x += obj.vX;
   obj.y += obj.vY;
   //Falling
   if(!obj.onGround){
+    obj.vY *= friction;
     obj.vY += gravity;
     obj.y += obj.vY;
   }
-  if(Math.round(obj.vX) === 0){
+  if(Math.round(obj.vX) === 0 && !obj.attacking && !obj.isJumping){
     obj.vX = 0
-    obj.img = obj.idleRight;
+    obj.img = obj.facing === "left" ? obj.idleLeft: obj.idleRight;
     obj.imgWidth = obj.img.width;
     obj.imgHeight = obj.img.height;
+  }
+  if(Math.round(obj.vY) === 0 && obj.isJumping){
+    obj.isJumping = false;
+    obj.canJump = true;
+    // obj.vY = 0;
   }
 }
 
@@ -170,40 +207,43 @@ function spawnEnemy(){
     x: 200,
     y: 30,
     context: ctxMonster,
-    imgWidth: 86,
-    imgHeight: 1039,
     img: maleZomRight,
     numberOfFrames: 10,
     loop: true,
     facing: "right",
     onGround: false,
-    move: false
+    idleLeft: maleZomRight,
+    idleRight: maleZomRight,
+    runLeft: maleZomRight,
+    runRight: maleZomRight,
+    attackLeft: maleZomRight,
+    attackRight: maleZomRight
   });
   currentEnemy.push(temp);
 }
 
-function updateGround(){
-  //nove griound when needed
+function updateGround(x){
+  landable.forEach(function(item){
+    item.xStart += x;
+  })
 }
 
 
-
-
-
-
 function gameLoop(){
+  ctxBack.clearRect(0,0, background.width, background.height)
   landable.forEach(function(item){
-    updateGround(item);
     ctxBack.drawImage(item.img, item.xStart, item.yStart)
   });
-  // while (currentEnemy.length < 1){
-  //   spawnEnemy();
-  // }
+  while (currentEnemy.length < 1){
+    spawnEnemy();
+  }
+  ctxMonster.clearRect(0,0, monster.width, monster.height)
   for(var i=0;i<currentEnemy.length; i++){
     currentEnemy[i].update();
     currentEnemy[i].render();
   }
   ctxUi.clearRect(0,0,ui.width,ui.height);
+
 
   //---Debug Display
   ctxUi.fillText("Player1 Pos: ("+ player1.x.toFixed(3) + ", " + player1.y.toFixed(3) + ")",10,50);
@@ -224,37 +264,31 @@ function gameLoop(){
 
 
 var player1 = sprite({
-  x: 30,
+  x: 50,
   y: 30,
   context: ctxPlay1,
-  imgWidth: 46,
-  imgHeight: 879,
   img: player1IdleRight,
   numberOfFrames: 10,
-  loop: true,
   facing: "right",
   onGround: false,
-  move: false,
   idleLeft: player1IdleLeft,
   idleRight: player1IdleRight,
   runLeft: player1RunLeft,
   runRight: player1RunRight,
   attackLeft: player1AttackLeft,
-  attackRight: player1AttackRight
+  attackRight: player1AttackRight,
+  jumpLeft: player1JumpLeft,
+  jumpRight: player1JumpRight
 });
 
 var player2 = sprite({
-  x: 30,
+  x: 50,
   y: 30,
   context: ctxPlay2,
-  imgWidth: 58,
-  imgHeight: 1000,
   img: player2IdleRight,
   numberOfFrames: 10,
-  loop: true,
   facing: "right",
   onGround: false,
-  move: false,
   idleLeft: player2IdleLeft,
   idleRight: player2IdleRight,
   runLeft: player2RunLeft,
@@ -273,44 +307,57 @@ player1RunLeft.onload = function(){
 //KeyInput function
 $(document).keydown(function(e){
   if(e.keyCode === 39){//move right
-
+    player1.vX += playerMoveSpeed;
+    player1.img = player1RunRight;
+    player1.facing = "right";
   }
   if(e.keyCode === 37){//move left
-
+    player1.vX -= playerMoveSpeed;
+    player1.img = player1RunLeft;
+    player1.facing = "left";
   }
   if(e.keyCode === 32){ //Attack
-
+    player1.attacking = true;
+    player1.img = player1.facing === "left" ? player1AttackLeft : player1AttackRight;
   }
-  if(e.keyCode === 38){//up key
-
+  if(e.keyCode === 38 && player1.canJump){//up key
+    player1.img = player1.facing === "left" ? player1JumpLeft : player1JumpRight;
+    player1.isJumping = true;
+    player1.canJump = false;
+    player1.onGround = false;
+    player1.vY -= playerJumpSpeed;
   }
   if(e.keyCode === 40){//Down key
 
   }
-  if(e.keyCode === 68){//right D key
-    player2.vX += 3;
+  if(e.keyCode === 68){//right D key && player2
+    player2.vX += playerMoveSpeed;
+    player2.facing = "right";
     player2.img = player2RunRight;
 
   }
   if(e.keyCode === 65){//Left A key
-    player2.vX -= 3;
+    player2.vX -= playerMoveSpeed;
+    player2.facing = "left";
     player2.img = player2RunLeft;
   }
-  if(e.keyCode === 70){
-
+  if(e.keyCode === 70){//P2 Attack F key
+    player2.attacking = true;
+    player2.img = player2.facing === "left" ? player2AttackLeft : player2AttackRight;
+  }
+  if(e.keyCode === 87){
+    player2.isJumping = true;
+    player2.onGround = false;
+    player2.vY -= playerJumpSpeed;
   }
 
 });
 
 $(document).keyup(function(e){
-  player1.context.clearRect(player1.x,player1.y, player1.imgWidth, player1.imgHeight);
-  player2.context.clearRect(player2.x,player1.y, player2.imgWidth, player2.imgHeight);
-  if(e.keyCode === 40 || e.keyCode === 37 || e.keyCode === 38 || e.keyCode === 39 || e.keyCode === 32){
-
+  if(e.keyCode === 32){
+    player1.attacking = false;
   }
-  if(e.keyCode === 87 || e.keyCode === 65 || e.keyCode === 83 || e.keyCode === 68 || e.keyCode === 70){
-
-  }
-  if(e.keyCode === 65){
+  if(e.keyCode === 70){
+    player2.attacking = false;
   }
 });
