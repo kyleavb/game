@@ -13,11 +13,11 @@ for(var i=0;i<canvas.length;i++){
   canvas[i].width = $(window).innerWidth()-30;
   canvas[i].height = $(window).innerHeight()-30;
 }
-var playerMoveSpeed = 3;
+var playerMoveSpeed = 5;
 var playerJumpSpeed = 25;
 var landable = [];
 var currentEnemy = [];
-var gravity = 1;
+var gravity = .98;
 var friction = 0.96;
 ctxUi.font = "12px Arial";
 ctxUi.fillStyle = "red";
@@ -86,6 +86,8 @@ function sprite(options){
   that.canJump = true;
   that.isJumping = false;
   that.life = 3,
+  that.dead = false;
+  that.hittable = true;
   that.facing = "right";
   frameIndex = 0,
   that.tickCount = 0,
@@ -117,73 +119,89 @@ function sprite(options){
   },
 
   that.update = function(){
-    this.tickCount += 1;
-    if(that.tickCount >= that.ticksPerFrame){
-      that.tickCount =0;
-      if(frameIndex < that.numberOfFrames -1){
-        frameIndex += 1;
-      }else if (that.loop){
-        frameIndex =0;
+    if(this.life){
+      this.tickCount += 1;
+      if(that.tickCount >= that.ticksPerFrame){
+        that.tickCount =0;
+        if(frameIndex < that.numberOfFrames - 1){
+          frameIndex += 1;
+        }else if (that.loop){
+          frameIndex =0;
+        }
       }
-    }
-    updatePosition(that);
-    if(this.attacking){
-      var hits = []
-      checkCollisions(this, hits);
+      updatePosition(that);
+      if(this.attacking){
+        var hits = []
+        checkCollisions(this, hits);
+      }
+    }else{
+
     }
   }
   return that;
 }
 
 function checkCollisions(obj, hits){
-  var rect1 = {
-    x:obj.x,
-    y:obj.y,
-    width:obj.img.width,
-    height: obj.img.height
-  }
+  var playerHitBox = {x:obj.x, y:obj.y, width:obj.img.width, height: obj.img.height}
   currentEnemy.forEach(function(item){
-    var rect2 = {x: item.x, y:item.y, width: item.img.width,height: item.img.height}
-    if (rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y) {
+    var enemyHitBox = {x: item.x, y:item.y, width: item.img.width,height: item.img.height}
+    if (playerHitBox.x < enemyHitBox.x + enemyHitBox.width && playerHitBox.x + playerHitBox.width > enemyHitBox.x && playerHitBox.y < enemyHitBox.y + enemyHitBox.height && playerHitBox.height + playerHitBox.y > enemyHitBox.y) {
+      if(item.hittable){
+        item.hittable = false;
+        item.life -= 1;
+        console.log("hit!");
+        if(item.life <= 0){
+          console.log("dude be dead");
+          item.dead = true;
+        }else{
+          setTimeout(function(){
+            item.hittable = true;
+          }, 1000);
+        }
+      }
       hits.push(item);
     }
   })
 }
 
 function updatePosition(obj){
-  for(var i=0; i<landable.length; i++){//Detect Landable
-    if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y>landable[i].yStart && obj.y > landable[i].yEnd && !obj.isJumping){
-      obj.onGround = true;
-      obj.vY = 0;
-    }
-  }
   if(obj.x > play1.width - 30){
     obj.vX  -= 7
   }else if(obj.x < 0){
     obj.vX += 7
   }
+
   obj.vX *= friction;
   obj.vY *= friction;
-  obj.vY *= gravity;
+  obj.vX *= gravity;
   obj.x += obj.vX;
   obj.y += obj.vY;
+
   //Falling
   if(!obj.onGround){
     obj.vY *= friction;
     obj.vY += gravity;
     obj.y += obj.vY;
   }
+  for(var i=0; i<landable.length; i++){//Detect Landable
+    if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y>landable[i].yStart && obj.y < landable[i].yEnd){
+      obj.onGround = true;
+      obj.isJumping = false;
+      obj.canJump = true;
+      obj.vY = 0;
+    }
+  }
+
   if(Math.round(obj.vX) === 0 && !obj.attacking && !obj.isJumping){
     obj.vX = 0
     obj.img = obj.facing === "left" ? obj.idleLeft: obj.idleRight;
     obj.imgWidth = obj.img.width;
     obj.imgHeight = obj.img.height;
   }
-  if(Math.round(obj.vY) === 0 && obj.isJumping){
-    obj.isJumping = false;
-    obj.canJump = true;
-    // obj.vY = 0;
-  }
+}
+
+function randomNum(max){
+  return Math.floor(Math.random() * max);
 }
 
 function createGround(){
@@ -193,33 +211,23 @@ function createGround(){
     var rock = groundObject({
       xStart:tilePos,
       xEnd: tilePos+groundTile.width,
-      yStart: background.height - 225,
-      yEnd: background.height - 200,
+      yStart: background.height - groundTile.height,
+      yEnd: background.height,
       img: groundTile
     })
     landable.push(rock);
     tilePos += 255;
   }
-}
-
-function spawnEnemy(){
-  var temp = sprite({
-    x: 200,
-    y: 30,
-    context: ctxMonster,
-    img: maleZomRight,
-    numberOfFrames: 10,
-    loop: true,
-    facing: "right",
-    onGround: false,
-    idleLeft: maleZomRight,
-    idleRight: maleZomRight,
-    runLeft: maleZomRight,
-    runRight: maleZomRight,
-    attackLeft: maleZomRight,
-    attackRight: maleZomRight
-  });
-  currentEnemy.push(temp);
+  var x = randomNum(background.width)
+  var y = randomNum(background.height)
+  var rando = groundObject({
+    xStart: x,
+    xEnd: x+groundTile.width,
+    yStart: y,
+    yEnd: y+20,
+    img: groundTile
+  })
+  landable.push(rando);
 }
 
 function updateGround(x){
@@ -296,8 +304,29 @@ var player2 = sprite({
   attackLeft: player2AttackLeft,
   attackRight: player2AttackRight
 });
+
+function spawnEnemy(){
+  var temp = sprite({
+    x: 200,
+    y: 30,
+    context: ctxMonster,
+    img: maleZomRight,
+    numberOfFrames: 10,
+    loop: true,
+    facing: "right",
+    onGround: false,
+    idleLeft: maleZomRight,
+    idleRight: maleZomRight,
+    runLeft: maleZomRight,
+    runRight: maleZomRight,
+    attackLeft: maleZomRight,
+    attackRight: maleZomRight
+  });
+  currentEnemy.push(temp);
+}
+
 //When finished loading last image, run gameLoop
-player1RunLeft.onload = function(){
+groundTile.onload = function(){
   player2.render();
   player1.render();
   createGround();
@@ -345,12 +374,12 @@ $(document).keydown(function(e){
     player2.attacking = true;
     player2.img = player2.facing === "left" ? player2AttackLeft : player2AttackRight;
   }
-  if(e.keyCode === 87){
+  if(e.keyCode === 87 && player2.canJump){//P2 Jump
     player2.isJumping = true;
+    player2.canJump = false;
     player2.onGround = false;
     player2.vY -= playerJumpSpeed;
   }
-
 });
 
 $(document).keyup(function(e){
