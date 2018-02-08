@@ -1,11 +1,11 @@
 var background = document.getElementById("background");
 var ctxBack = background.getContext("2d");
+var monster = document.getElementById("monster");
+var ctxMonster = monster.getContext("2d");
 var play1 = document.getElementById("play1");
 var ctxPlay1 = play1.getContext("2d");
 var play2 = document.getElementById("play2");
 var ctxPlay2 = play2.getContext("2d");
-var monster = document.getElementById("monster");
-var ctxMonster = monster.getContext("2d");
 var ui = document.getElementById("ui");
 var ctxUi = ui.getContext("2d");
 var canvas = $(".game");
@@ -13,14 +13,16 @@ for(var i=0;i<canvas.length;i++){
   canvas[i].width = $(window).innerWidth()-30;
   canvas[i].height = $(window).innerHeight()-30;
 }
+var moreZombies = true;
+var maxEnemy = 20;
+var debug = false;
+var monsterMoveSpeed = 2;
 var playerMoveSpeed = 5;
 var playerJumpSpeed = 25;
 var landable = [];
 var currentEnemy = [];
 var gravity = .98;
 var friction = 0.96;
-ctxUi.font = "12px Arial";
-ctxUi.fillStyle = "red";
 //Image Loader
 //----------------Player1 Image -----------------------------
 var player1AttackRight = new Image;
@@ -58,6 +60,21 @@ var maleZomRight = new Image;
 maleZomRight.src = "img/maleZombie/maleZombieRight.png";
 var maleZomLeft = new Image;
 maleZomLeft.src = "img/maleZombie/maleZombieLeft.png";
+var maleZomIdleLeft = new Image;
+maleZomIdleLeft.src = "img/maleZombie/maleZombieIdleLeft.png";
+var maleZomIdleRight= new Image;
+maleZomIdleRight.src = "img/maleZombie/maleZombieIdleRight.png";
+var maleZomDie = new Image;
+maleZomDie.src = "img/maleZombie/maleZombieDie.png";
+//Female
+var femaleZomRight = new Image;
+femaleZomRight.src = "img/femaleZombie/femaleZombieWalkRight.png";
+var femaleZomLeft = new Image;
+femaleZomLeft.src = "img/femaleZombie/femaleZombieWalkLeft.png";
+femaleZomIdleRight = new Image;
+femaleZomIdleRight.src = "img/femaleZombie/femaleZombieIdleRight.png"
+femaleZomIdleLeft = new Image;
+femaleZomIdleLeft.src = "img/femaleZombie/femaleZombieIdleLeft.png"
 //----------------Game Images -----------------------------
 var groundTile = new Image;
 groundTile.src = "img/ground/Tile_11.png"
@@ -80,18 +97,23 @@ function sprite(options){
   that.y = options.y;
   that.vX = 0;
   that.vY = 0;
+  that.type = options.type;
+  that.id = options.id;
+  that.canMove = true;
   that.move = false;
   that.onGround = options.onGround;
+  that.groundBelow = false;
   that.attacking = false;
   that.canJump = true;
   that.isJumping = false;
   that.life = 3,
   that.dead = false;
   that.hittable = true;
+  that.score = 0;
   that.facing = "right";
-  frameIndex = 0,
+  that.frameIndex = 0,
   that.tickCount = 0,
-  that.ticksPerFrame = 5;
+  that.ticksPerFrame = 3;
   that.numberOfFrames = options.numberOfFrames,
   that.loop = true,
   that.context = options.context,
@@ -103,13 +125,14 @@ function sprite(options){
   that.attackRight = options.attackRight,
   that.jumpLeft = options.jumpLeft,
   that.jumpRight = options.jumpRight,
+  that.die = options.die,
   that.img = options.img,
 
   that.render = function(){
     that.context.drawImage(
       that.img,
       0,//Source Start X
-      frameIndex * that.img.height / that.numberOfFrames, // Source Start Y
+      that.frameIndex * that.img.height / that.numberOfFrames, // Source Start Y
       that.img.width,//Soruce xSize
       that.img.height / that.numberOfFrames,//sorce ySize height
       that.x,
@@ -123,10 +146,10 @@ function sprite(options){
       this.tickCount += 1;
       if(that.tickCount >= that.ticksPerFrame){
         that.tickCount =0;
-        if(frameIndex < that.numberOfFrames - 1){
-          frameIndex += 1;
+        if(that.frameIndex < that.numberOfFrames - 1){
+          that.frameIndex += 1;
         }else if (that.loop){
-          frameIndex =0;
+          that.frameIndex =0;
         }
       }
       updatePosition(that);
@@ -149,12 +172,24 @@ function checkCollisions(obj, hits){
       if(item.hittable){
         item.hittable = false;
         item.life -= 1;
-        console.log("hit!");
+        obj.score += 10;
         if(item.life <= 0){
-          console.log("dude be dead");
           item.dead = true;
+          if(item.type === "enemy"){//Dead Enemy
+            item.vX = 0;
+            item.canMove = false;
+            //item.loop = false;
+            item.img = item.die;
+            setTimeout(function(){
+              currentEnemy.splice(currentEnemy.indexOf(item), 1);
+            },300);
+          }
         }else{
+          var blink = setInterval(function(){
+            item.img.style.opacity = .10;
+          }, 250);
           setTimeout(function(){
+            clearInterval(blink)
             item.hittable = true;
           }, 1000);
         }
@@ -165,38 +200,45 @@ function checkCollisions(obj, hits){
 }
 
 function updatePosition(obj){
-  if(obj.x > play1.width - 30){
+  if(obj.vY > 0){
+    obj.isJumping = false;
+  }
+  if(obj.x > play1.width - 50){
     obj.vX  -= 7
-  }else if(obj.x < 0){
+  }else if(obj.x < 10){
     obj.vX += 7
+  }
+  if(!obj.onGround || !obj.groundBelow){
+    obj.vY *= friction;
+    obj.vY += gravity;
+    obj.y += obj.vY;
+  }
+  obj.groundBelow = false;
+  for(var i=0; i<landable.length; i++){//Detect Landable
+    if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y>landable[i].yStart && obj.y < landable[i].yEnd && !obj.isJumping){
+      obj.onGround = true;
+      obj.groundBelow = true;
+      obj.canJump = true;
+      obj.vY = 0;
+    }
   }
 
   obj.vX *= friction;
   obj.vY *= friction;
   obj.vX *= gravity;
+  //obj.vY += gravity;
   obj.x += obj.vX;
   obj.y += obj.vY;
-
-  //Falling
-  if(!obj.onGround){
-    obj.vY *= friction;
-    obj.vY += gravity;
-    obj.y += obj.vY;
-  }
-  for(var i=0; i<landable.length; i++){//Detect Landable
-    if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y>landable[i].yStart && obj.y < landable[i].yEnd){
-      obj.onGround = true;
-      obj.isJumping = false;
-      obj.canJump = true;
-      obj.vY = 0;
-    }
-  }
 
   if(Math.round(obj.vX) === 0 && !obj.attacking && !obj.isJumping){
     obj.vX = 0
     obj.img = obj.facing === "left" ? obj.idleLeft: obj.idleRight;
     obj.imgWidth = obj.img.width;
     obj.imgHeight = obj.img.height;
+  }
+
+  if(Math.round(obj.vY) === 0){
+    obj.vY = 0
   }
 }
 
@@ -221,10 +263,10 @@ function createGround(){
   var x = randomNum(background.width)
   var y = randomNum(background.height)
   var rando = groundObject({
-    xStart: x,
-    xEnd: x+groundTile.width,
-    yStart: y,
-    yEnd: y+20,
+    xStart: 375,
+    xEnd: 375+groundTile.width,
+    yStart: 350,
+    yEnd: 350+20,
     img: groundTile
   })
   landable.push(rando);
@@ -236,29 +278,71 @@ function updateGround(x){
   })
 }
 
-
+function moveMonsters(obj){
+  obj.canMove = false;
+  var moveDir = randomNum(2) == true ? true:false;
+  var moveDuration = randomNum(3000) + 1;
+  if(moveDir){
+    obj.facing = "right";
+    obj.img=obj.runRight;
+    obj.vX = monsterMoveSpeed;
+  }else{
+    obj.facing = "left";
+    obj.img = obj.runLeft;
+    obj.vX = -monsterMoveSpeed;
+  }
+  setTimeout(function(){
+    obj.canMove = true;
+  },moveDuration);
+}
+//------------------------GAME LOOOOOOOOOPPPP------------------------------
 function gameLoop(){
+  if(currentEnemy.length <=0)
+  if(moreZombies){
+    spawnEnemy(maxEnemy);
+  }
   ctxBack.clearRect(0,0, background.width, background.height)
-  landable.forEach(function(item){
+  landable.forEach(function(item){//redraw background
     ctxBack.drawImage(item.img, item.xStart, item.yStart)
   });
-  while (currentEnemy.length < 1){
-    spawnEnemy();
-  }
   ctxMonster.clearRect(0,0, monster.width, monster.height)
   for(var i=0;i<currentEnemy.length; i++){
     currentEnemy[i].update();
+    if(currentEnemy[i].canMove){
+      moveMonsters(currentEnemy[i])
+    }
     currentEnemy[i].render();
   }
   ctxUi.clearRect(0,0,ui.width,ui.height);
 
 
   //---Debug Display
-  ctxUi.fillText("Player1 Pos: ("+ player1.x.toFixed(3) + ", " + player1.y.toFixed(3) + ")",10,50);
-  ctxUi.fillText("Player1 Velocity: ("+ player1.vX + ", " + player1.vY + ")",10,65);
-  ctxUi.strokeText("Player2 Pos: (X: "+ player2.x.toFixed(3) + ", Y: " + player2.y.toFixed(3) + ")",300,50);
-  ctxUi.strokeText("Player2 Velocity: (X: "+ player2.vX + ", Y: " + player2.vY.toFixed(3) + ")",300,65);
+  if(debug){
+    ctxUi.font = "12px Arial";
+    ctxUi.fillStyle = "red";
+    ctxUi.fillText("Player1 Pos: (X: "+ player1.x.toFixed(3) + ", Y: " + player1.y.toFixed(3) + ")",10,50);
+    ctxUi.fillText("Player1 Velocity: (X: "+ player1.vX + ", Y: " + player1.vY + ")",10,65);
+    ctxUi.fillText("Player1 onGround: " + player1.onGround,10,80);
+    ctxUi.fillText("Player1 isJumping: " + player1.isJumping,10,95);
+    ctxUi.fillText("Player1 groundBelow: " + player1.groundBelow,10,110);
+    ctxUi.fillText("Player1 Score: " + player1.score,10,125);
+    ctxUi.strokeText("Player2 Pos: (X: "+ player2.x.toFixed(3) + ", Y: " + player2.y.toFixed(3) + ")",300,50);
+    ctxUi.strokeText("Player2 Velocity: (X: "+ player2.vX + ", Y: " + player2.vY.toFixed(3) + ")",300,65);
+    ctxUi.strokeText("Player2 loop: " + player2.loop,300,80);
+    ctxUi.strokeText("Player2 that.frameIndex: "+ player2.frameIndex, 300,95)
+    ctxUi.strokeText("Player2 groundBelow: "+ player2.groundBelow, 300,110)
+    ctxUi.strokeText("Player2 Score: "+ player2.score, 300,125)
+    ctxUi.fillStyle = "blue";
+    ctxUi.strokeText("Enemy Pos: (X: "+ currentEnemy[0].x.toFixed(3) + ", Y: " + currentEnemy[0].y.toFixed(3) + ")",600,50);
+    ctxUi.strokeText("Enemy Velocity: (X: "+ currentEnemy[0].vX + ", Y: " + currentEnemy[0].vY.toFixed(3) + ")",600,65);
+    ctxUi.strokeText("Enemy onGround: " + currentEnemy[0].onGround,600,80);
+    ctxUi.strokeText("Enemy Life: "+ currentEnemy[0].life, 600,95)
+    ctxUi.strokeText("Enemy groundBelow: "+ currentEnemy[0].groundBelow, 600,110)
+    ctxUi.strokeText("Enemy Score: "+ currentEnemy[0].score, 600,125)
+  }
+
   //---Debug Display
+
   player1.context.clearRect(0,0, play1.width, play1.height);
   player2.context.clearRect(0,0, play2.width, play2.height);
   player1.update();
@@ -269,11 +353,11 @@ function gameLoop(){
 }
 
 
-
-
 var player1 = sprite({
   x: 50,
   y: 30,
+  type: 'player',
+  id: 1,
   context: ctxPlay1,
   img: player1IdleRight,
   numberOfFrames: 10,
@@ -292,6 +376,8 @@ var player1 = sprite({
 var player2 = sprite({
   x: 50,
   y: 30,
+  type: 'player',
+  id: 2,
   context: ctxPlay2,
   img: player2IdleRight,
   numberOfFrames: 10,
@@ -305,36 +391,72 @@ var player2 = sprite({
   attackRight: player2AttackRight
 });
 
-function spawnEnemy(){
-  var temp = sprite({
-    x: 200,
-    y: 30,
-    context: ctxMonster,
-    img: maleZomRight,
-    numberOfFrames: 10,
-    loop: true,
-    facing: "right",
-    onGround: false,
-    idleLeft: maleZomRight,
-    idleRight: maleZomRight,
-    runLeft: maleZomRight,
-    runRight: maleZomRight,
-    attackLeft: maleZomRight,
-    attackRight: maleZomRight
-  });
-  currentEnemy.push(temp);
+function spawnEnemy(num){
+  for(var i = 0; i<num;i++){
+    var flip = randomNum(2) == true ? true: false;
+    if(flip){
+      var temp = sprite({
+        x: randomNum(background.width),
+        y: 30,
+        type: 'enemy',
+        id: currentEnemy.length,
+        context: ctxMonster,
+        img: maleZomRight,
+        numberOfFrames: 10,
+        loop: true,
+        facing: "right",
+        onGround: false,
+        die: maleZomDie,
+        idleLeft: maleZomIdleLeft,
+        idleRight: maleZomIdleRight,
+        runLeft: maleZomLeft,
+        runRight: maleZomRight,
+        attackLeft: maleZomRight,
+        attackRight: maleZomRight
+      });
+    }else{
+      var temp = sprite({
+        x: randomNum(background.width),
+        y: 30,
+        type: 'enemy',
+        id: currentEnemy.length,
+        context: ctxMonster,
+        img: femaleZomRight,
+        numberOfFrames: 10,
+        loop: true,
+        facing: "right",
+        onGround: false,
+        die: maleZomDie,
+        idleLeft: femaleZomIdleLeft,
+        idleRight: femaleZomIdleRight,
+        runLeft: femaleZomLeft,
+        runRight: femaleZomRight,
+        attackLeft: maleZomRight,
+        attackRight: maleZomRight
+      })
+    }
+    currentEnemy.push(temp);
+  }
 }
 
 //When finished loading last image, run gameLoop
 groundTile.onload = function(){
   player2.render();
   player1.render();
+ spawnEnemy(maxEnemy);
   createGround();
   gameLoop();
 }
 
 //KeyInput function
 $(document).keydown(function(e){
+  if(e.keyCode === 187){//Toggle Debug
+    if(debug){
+      debug = false;
+    }else{
+      debug = true;
+    }
+  }
   if(e.keyCode === 39){//move right
     player1.vX += playerMoveSpeed;
     player1.img = player1RunRight;
@@ -350,7 +472,6 @@ $(document).keydown(function(e){
     player1.img = player1.facing === "left" ? player1AttackLeft : player1AttackRight;
   }
   if(e.keyCode === 38 && player1.canJump){//up key
-    player1.img = player1.facing === "left" ? player1JumpLeft : player1JumpRight;
     player1.isJumping = true;
     player1.canJump = false;
     player1.onGround = false;
