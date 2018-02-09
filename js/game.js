@@ -14,8 +14,9 @@ for(var i=0;i<canvas.length;i++){
   canvas[i].height = $(window).innerHeight()-30;
 }
 var moreZombies = true;
-var maxEnemy = 5;
-var maxDetail = 20;
+var distance = 0;
+var maxEnemy = 50;
+var maxDetail = 50;
 var debug = false;
 var monsterMoveSpeed = 2;
 var playerMoveSpeed = 5;
@@ -115,7 +116,7 @@ function sprite(options){
   that.attacking = false;
   that.canJump = true;
   that.isJumping = false;
-  that.life = 3,
+  that.life = 1,
   that.dead = false;
   that.hittable = true;
   that.score = 0;
@@ -179,6 +180,7 @@ function checkCollisions(obj, hits){
     var enemyHitBox = {x: item.x, y:item.y, width: item.img.width,height: item.img.height}
     if (playerHitBox.x < enemyHitBox.x + enemyHitBox.width && playerHitBox.x + playerHitBox.width > enemyHitBox.x && playerHitBox.y < enemyHitBox.y + enemyHitBox.height && playerHitBox.height + playerHitBox.y > enemyHitBox.y) {
       if(item.hittable){
+        $('.hit')[0].play();
         item.hittable = false;
         item.life -= 1;
         obj.score += 10;
@@ -276,9 +278,7 @@ function createGround(){
     var detailNum = randomNum(21);
     var backObj = groundObject({
       xStart: randomNum(background.width *2),
-      //xEnd: randomNum(background.width *2),
       yStart: background.height - backgroundDetail[detailNum].height - 90,
-      //yEnd: background.height - groundTile.height + 50,
       img: backgroundDetail[detailNum]
     });
     detail.push(backObj);
@@ -318,14 +318,23 @@ function moveMonsters(obj){
   },moveDuration);
 }
 
-function checkEnemy(){
+function checkView(){
   currentEnemy.forEach(function(item){
     if(item.x < 0 || item.y > background.height){
       currentEnemy.splice(currentEnemy.indexOf(item),1);
     }
   })
+  landable.forEach(function(item){
+    if(item.xEnd < 0 ){
+      landable.splice(landable.indexOf(item), 1);
+    }
+  })
+  detail.forEach(function(item){
+    if(item.xEnd < 0 ){
+      detail.splice(detail.indexOf(item), 1);
+    }
+  })
 }
-
 
 function checkGameOver(){
   //if() 2 player check
@@ -334,7 +343,7 @@ function checkGameOver(){
 
 //------------------------GAME LOOOOOOOOOPPPP------------------------------
 function gameLoop(){
-  checkEnemy();
+  checkView();
   if(currentEnemy.length <=0)
   if(moreZombies){
     spawnEnemy(maxEnemy);
@@ -368,7 +377,7 @@ function gameLoop(){
     ctxUi.strokeText("Player2 Pos: (X: "+ player2.x.toFixed(3) + ", Y: " + player2.y.toFixed(3) + ")",300,50);
     ctxUi.strokeText("Player2 Velocity: (X: "+ player2.vX + ", Y: " + player2.vY.toFixed(3) + ")",300,65);
     ctxUi.strokeText("Player2 loop: " + player2.loop,300,80);
-    ctxUi.strokeText("Player2 that.frameIndex: "+ player2.frameIndex, 300,95)
+    ctxUi.strokeText("Player2 Distance: "+ distance, 300,95)
     ctxUi.strokeText("Player2 groundBelow: "+ player2.groundBelow, 300,110)
     ctxUi.strokeText("Player2 Score: "+ player2.score, 300,125)
     ctxUi.fillStyle = "blue";
@@ -379,7 +388,6 @@ function gameLoop(){
     ctxUi.strokeText("Enemy Count: "+ currentEnemy.length, 600,110)
     ctxUi.strokeText("Enemy Score: "+ currentEnemy[0].score, 600,125)
   }
-
   //---Debug Display
 
   player1.context.clearRect(0,0, play1.width, play1.height);
@@ -484,9 +492,10 @@ function spawnEnemy(num){
 
 //When finished loading last image, run gameLoop
 groundTile.onload = function(){
+  //$('.music')[0].play();
   player2.render();
   player1.render();
- spawnEnemy(maxEnemy);
+  spawnEnemy(maxEnemy);
   createGround();
   gameLoop();
 }
@@ -501,16 +510,19 @@ $(document).keydown(function(e){
     }
   }
   if(e.keyCode === 39){//move right
+    $('.step')[0].play();
     player1.vX += playerMoveSpeed;
     player1.img = player1RunRight;
     player1.facing = "right";
   }
   if(e.keyCode === 37){//move left
+    $('.step')[0].play();
     player1.vX -= playerMoveSpeed;
     player1.img = player1RunLeft;
     player1.facing = "left";
   }
   if(e.keyCode === 32){ //Attack
+    $('.sword')[0].play();
     player1.attacking = true;
     player1.img = player1.facing === "left" ? player1AttackLeft : player1AttackRight;
   }
@@ -524,6 +536,7 @@ $(document).keydown(function(e){
 
   }
   if(e.keyCode === 68){//right D key && player2
+
     player2.vX += playerMoveSpeed;
     player2.facing = "right";
     player2.img = player2RunRight;
@@ -535,6 +548,7 @@ $(document).keydown(function(e){
     player2.img = player2RunLeft;
   }
   if(e.keyCode === 70){//P2 Attack F key
+    $('.sword')[0].play();
     player2.attacking = true;
     player2.img = player2.facing === "left" ? player2AttackLeft : player2AttackRight;
   }
@@ -554,3 +568,4 @@ $(document).keyup(function(e){
     player2.attacking = false;
   }
 });
+//gameInit();
