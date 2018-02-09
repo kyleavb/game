@@ -13,13 +13,17 @@ for(var i=0;i<canvas.length;i++){//Setting width/height of canvas to size of dis
   canvas[i].width = $(window).innerWidth();
   canvas[i].height = $(window).innerHeight();
 }
-var distance = 0;
-var maxEnemy = 100;
-var maxDetail = 25;
+var tilePos = 0;
+var gameStart = false;
 var debug = false;
-var monsterMoveSpeed = 2;
+var startPlayer2 = false;
+var player2 = {};
+var distance = 0;
+var maxEnemy = 20;
+var maxDetail = 25;
+var monsterMoveSpeed = 5;
 var playerMoveSpeed = 5;
-var playerJumpSpeed = 205;
+var playerJumpSpeed = 25;
 var detail = [];
 var backgroundDetail = [];
 var landable = [];
@@ -83,6 +87,14 @@ for(var i=0;i<21;i++){//creating array of background objects
   backgroundDetail[i] = new Image;
   backgroundDetail[i].src = "img/Objects/Object_"+ (i+1) + ".png";
 }
+var titleNinja = new Image;
+titleNinja.src = "img/Objects/ninja_logo.png";
+var titleVs = new Image;
+titleVs.src = "img/Objects/VS.png";
+var titleZombies = new Image;
+titleZombies.src = "img/Objects/zombies.png";
+var titleRampage = new Image;
+titleRampage.src = "img/Objects/rampage.png";
 var platStart = new Image;
 platStart.src = "img/ground/Platform/platStart.png";
 var platFill = new Image;
@@ -110,7 +122,6 @@ function sprite(options){
   that.vX = 0;
   that.vY = 0;
   that.type = options.type;
-  that.id = options.id;
   that.canMove = true;
   that.moveFrame = options.moveFrame;
   that.move = false;
@@ -141,7 +152,7 @@ function sprite(options){
   that.die = options.die,
   that.img = options.img,
 
-  that.render = function(){
+  that.render = function(){//Draw new sprite frame
     that.context.drawImage(
       that.img,
       0,//Source Start X
@@ -154,7 +165,7 @@ function sprite(options){
       that.img.height / that.numberOfFrames);
   },
 
-  that.update = function(){
+  that.update = function(){//Update Frame Index for animation and Position
     if(this.life){
       this.tickCount += 1;
       if(that.tickCount >= that.ticksPerFrame){
@@ -165,70 +176,67 @@ function sprite(options){
           that.frameIndex =0;
         }
       }
-      updatePosition(that);
       if(this.attacking){
-        var hits = [];
-        checkCollisions(this, hits);
-      }
-    }
-  }
+        checkCollisions(this);//make attack check collision
+      };
+    };
+  };
   return that;
 };
 
-function checkCollisions(obj, hits){
-  var attackerHitBox = {x:obj.x, y:obj.y, width:obj.img.width, height: obj.img.height / obj.numberOfFrames}
-  currentEnemy.forEach(function(item){
-    var enemyHitBox = {x: item.x, y:item.y, width: item.img.width, height: item.img.height / item.numberOfFrames}
-    if (attackerHitBox.x < enemyHitBox.x + enemyHitBox.width && attackerHitBox.x + attackerHitBox.width > enemyHitBox.x && attackerHitBox.y < enemyHitBox.y + enemyHitBox.height && attackerHitBox.height + attackerHitBox.y > enemyHitBox.y) {
-      if(item.hittable){
-        $('.hit')[0].play();
-        item.hittable = false;
-        item.life -= 1;
-        obj.score += 10;
-        if(item.life <= 0){
-          item.dead = true;
-          if(item.type === "enemy"){//Dead Enemy
+function checkCollisions(obj){
+  var attackerHitBox = {x:obj.x, y:obj.y, width:obj.img.width, height: obj.img.height / obj.numberOfFrames};
+  if(obj.type === "player"){//----------------PLAYER ATTACK-------------------------
+    currentEnemy.forEach(function(item){
+      var enemyHitBox = {x: item.x, y:item.y, width: item.img.width, height: item.img.height / item.numberOfFrames};
+      if (attackerHitBox.x < enemyHitBox.x + enemyHitBox.width && attackerHitBox.x + attackerHitBox.width > enemyHitBox.x && attackerHitBox.y < enemyHitBox.y + enemyHitBox.height && attackerHitBox.height + attackerHitBox.y > enemyHitBox.y){
+        if(item.hittable){//Checks if colided item is Hitable
+          $('.hit')[0].play();
+          item.hittable = false;
+          item.life -= 1;
+          obj.score += 10;
+          if(item.life <= 0){//Life Zero--Die
+            item.dead = true;
             item.vX = 0;
             item.canMove = false;
-            //item.loop = false;
             item.img = item.die;
-            setTimeout(function(){
+            setTimeout(function(){//Remove dead enemy from currentEnemy array after 300 MS
               currentEnemy.splice(currentEnemy.indexOf(item), 1);
             },300);
+          }else{//Not Dead
+            var blink = setInterval(function(){//Make Image Flash --!!!! Not working
+              item.img.style.opacity = .10;
+            }, 250);
+            setTimeout(function(){//after 500ms set hitable to true
+              clearInterval(blink)
+              item.hittable = true;
+            }, 500);
           }
-        }else{
-          var blink = setInterval(function(){
-            item.img.style.opacity = .10;
-          }, 250);
-          setTimeout(function(){
-            clearInterval(blink)
-            item.hittable = true;
-          }, 500);
         }
       }
-      hits.push(item);
-    }
-  });
+    });
+  }else{ //Monster Attack
+    //Not Impimented yet
+  }
 };
 
 function updatePosition(obj){
-  if(obj.vY > 0){
+  if(obj.vY > 0){//if no longer going up for jump - used for detecting on ground
     obj.isJumping = false;
   }
-
-  if(obj.x > play1.width - 350 && obj.moveFrame === true){
-    obj.x = obj.x-10
-    updateGround(-obj.vX)
-  }else if(obj.x < 10 && obj.moveFrame === true){
+  if(obj.x > play1.width - 350 && obj.moveFrame === true){//scroll Right
+    obj.x = obj.x-10; //keep player relativly in position
+    updateBackgroundItems(-obj.vX); //move background Elements to left while player keeps pushing frame
+  }else if(obj.x < 10 && obj.moveFrame === true){//keep players from going back (left)
     obj.vX += 7
-  }
-  if(!obj.onGround || !obj.groundBelow){
+  };
+  if(!obj.onGround || !obj.groundBelow){//add gravity if not on ground or no ground below
     obj.vY *= friction;
     obj.vY += gravity;
     obj.y += obj.vY;
   }
-  obj.groundBelow = false;
-  for(var i=0; i<landable.length; i++){//Detect Landable
+  obj.groundBelow = false; //force below to prove ground
+  for(var i=0; i<landable.length; i++){//Detect Landable land
     if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y>landable[i].yStart && obj.y < landable[i].yEnd && !obj.isJumping){
       obj.onGround = true;
       obj.groundBelow = true;
@@ -236,13 +244,14 @@ function updatePosition(obj){
       obj.vY = 0;
     }
   }
+  //Move Object by velocity
   obj.vX *= friction;
   obj.vY *= friction;
   obj.vX *= gravity;
   obj.x += obj.vX;
   obj.y += obj.vY;
 
-  if(Math.round(obj.vX) === 0 && !obj.attacking && !obj.isJumping){
+  if(Math.round(obj.vX) === 0 && !obj.attacking && !obj.isJumping){//when near 0 xV stop character and change animation to idel when stopped
     obj.vX = 0
     obj.img = obj.facing === "left" ? obj.idleLeft: obj.idleRight;
     obj.imgWidth = obj.img.width;
@@ -250,13 +259,30 @@ function updatePosition(obj){
   }
 }
 
-function randomNum(max){
+function randomNum(max, min){//Randomization function
+if(min){
+  return Math.random() * (max - min) + min;
+}
   return Math.floor(Math.random() * max);
 }
 
-function createGround(){
-  var numOfTile = background.width*2 / 256;
-  var tilePos = 0;
+function getLastX(arr){
+  var temp = 0;
+  for(var i=0; i<arr.length; i++){
+    if(arr[i].xEnd > 0){
+      temp = i;
+    };
+  };
+  return arr[temp];
+}
+
+function createGround(){ //creates baseline floor for game 2x width of screen width
+  var numOfTile = background.width*2 / groundTile.width;
+  if(tilePos > 0){
+    var end = getLastX(landable);
+    tilePos = end.xEnd;
+  }
+
   for(var i=0; i<= numOfTile; i++){
     var rock = groundObject({
       xStart:tilePos,
@@ -266,140 +292,209 @@ function createGround(){
       img: groundTile
     })
     landable.push(rock);
-    tilePos += 255;
+    tilePos += groundTile.width;
   }
-  //Foilage add
-  for(var i=0;i<maxDetail; i++){
-    var detailNum = randomNum(21);
-    var backObj = groundObject({
-      xStart: randomNum(background.width *2),
-      yStart: background.height - backgroundDetail[detailNum].height - 90,
-      img: backgroundDetail[detailNum]
+}
+
+function createBackgroundDetail(offScreen){//create background detail
+  if(!offScreen){
+    for(var i=0;i<maxDetail; i++){
+      var detailNum = randomNum(21);
+      var backObj = groundObject({
+        xStart: randomNum(background.width*2),
+        yStart: background.height - backgroundDetail[detailNum].height - 90,
+        img: backgroundDetail[detailNum]
+      });
+      detail.push(backObj);
+    }
+  }
+  if(offScreen){
+    for(var i=0;i<maxDetail; i++){
+      var detailNum = randomNum(21);
+      var backObj = groundObject({
+        xStart: randomNum(background.width + getLastX(landable).xEnd, background.width),
+        yStart: background.height - backgroundDetail[detailNum].height - 90,
+        img: backgroundDetail[detailNum]
+      });
+      detail.push(backObj);
+    }
+  }
+}
+
+function updateBackgroundItems(x){//moves all things not Players
+  if(gameStart){
+    landable.forEach(function(item){//cycle through landable objects
+      item.xStart += x;
+      item.xEnd += x;
     });
-    detail.push(backObj);
+    currentEnemy.forEach(function(item){//cycle through Enemy
+      item.x += x;
+    });
+    detail.forEach(function(item){//cycle through background detail
+      item.xStart += x;
+    });
+  }else{
+    landable.forEach(function(item){//cycle through landable objects
+      item.xStart += x;
+      item.xEnd += x;
+    });
+    detail.forEach(function(item){//cycle through background detail
+      item.xStart += x;
+    });
   }
+};
 
-
-}
-
-function updateGround(x){
-  landable.forEach(function(item){
-    item.xStart += x;
-    item.xEnd += x;
-  });
-  for(var i=0; i<currentEnemy.length; i++){
-    currentEnemy[i].x += x;
-  }
-  detail.forEach(function(item){
-    item.xStart += x;
-  })
-}
-
-function moveMonsters(obj){
-  obj.canMove = false;
-  var moveDir = randomNum(2) == true ? true:false;
-  var moveDuration = randomNum(3000) + 1;
-  if(moveDir){
+function moveMonsters(obj){//to move monsters
+  obj.canMove = false; //instantly changes to false so they wont keep warping
+  var moveDir = randomNum(2) == true ? true:false; //50/50 for direction
+  var moveDuration = randomNum(3000) + 1; //how long till can move again
+  if(moveDir){//move right
     obj.facing = "right";
     obj.img=obj.runRight;
     obj.vX = monsterMoveSpeed;
-  }else{
+  }else{//move left
     obj.facing = "left";
     obj.img = obj.runLeft;
     obj.vX = -monsterMoveSpeed;
-  }
-  setTimeout(function(){
+  };
+  setTimeout(function(){//set timeout till can move again
     obj.canMove = true;
   },moveDuration);
-}
+};
 
-function checkView(){
-  currentEnemy.forEach(function(item){
+function checkView(){//see if non player objects have moved out of frame
+  currentEnemy.forEach(function(item){//Check enemy
     if(item.x < 0 || item.y > background.height){
       currentEnemy.splice(currentEnemy.indexOf(item),1);
-    }
-  })
-  landable.forEach(function(item){
+    };
+  });
+  landable.forEach(function(item){//check landable ground
     if(item.xEnd < 0 ){
       landable.splice(landable.indexOf(item), 1);
-    }
-  })
-  detail.forEach(function(item){
+    };
+  });
+  detail.forEach(function(item){//check details
     if(item.xEnd < 0 ){
       detail.splice(detail.indexOf(item), 1);
-    }
-  })
-}
+    };
+  });
+};
 
-function checkGameOver(){
-  //if() 2 player check
+function checkGameOver(){//if player death --!!!! not implemented THEY ARE IMORTAL!
+  if(player1.dead){
+    if(startPlayer2 && player2.dead){
+
+    }
+  }
   window.requestAnimationFrame(gameLoop);
 }
 
 //------------------------GAME LOOOOOOOOOPPPP------------------------------
 function gameLoop(){
-  checkView();//Remove any thing out of frame
-  if(currentEnemy.length <=0){
-    spawnEnemy(maxEnemy);
-  }
-  ctxBack.clearRect(0,0, background.width, background.height);//clear background
-  landable.forEach(function(item){//redraw platforms
-    ctxBack.drawImage(item.img, item.xStart, item.yStart);
-  });
-  detail.forEach(function(item){//draw background detail
-    ctxBack.drawImage(item.img, item.xStart, item.yStart)
-  });
-  ctxMonster.clearRect(0,0, monster.width, monster.height);//clear monster frame
-  for(var i=0;i<currentEnemy.length; i++){//cycle through currentEnemy array
-    currentEnemy[i].update();//run update
-    if(currentEnemy[i].canMove){
-      moveMonsters(currentEnemy[i])
+  if(gameStart){
+    checkView();//Remove any thing out of frame
+    if(currentEnemy.length <=0){//if no enemy spawn more
+      spawnEnemy(randomNum(maxEnemy)+1);//spawn number between 1-max
+    };
+    ctxBack.clearRect(0,0, background.width, background.height);//clear background
+    landable.forEach(function(item){//redraw platforms
+      ctxBack.drawImage(item.img, item.xStart, item.yStart);
+    });
+    detail.forEach(function(item){//draw background detail
+      ctxBack.drawImage(item.img, item.xStart, item.yStart)
+    });
+    ctxMonster.clearRect(0,0, monster.width, monster.height);//clear monster frame
+    for(var i=0;i<currentEnemy.length; i++){//cycle through currentEnemy array
+      if(currentEnemy[i].canMove){
+        moveMonsters(currentEnemy[i])//move monster obj
+      };
+      currentEnemy[i].update();//update from SPRITE object
+      currentEnemy[i].render();//draw that zombro
+    };
+    ctxUi.clearRect(0,0,ui.width,ui.height);
+    //---Debug Display
+    if(debug){
+      ctxUi.font = "12px Arial";
+      ctxUi.fillStyle = "red";
+      ctxUi.fillText("Player1 Pos: (X: "+ player1.x.toFixed(3) + ", Y: " + player1.y.toFixed(3) + ")",10,50);
+      ctxUi.fillText("Player1 Velocity: (X: "+ player1.vX + ", Y: " + player1.vY + ")",10,65);
+      ctxUi.fillText("Player1 onGround: " + player1.onGround,10,80);
+      ctxUi.fillText("Player1 isJumping: " + player1.isJumping,10,95);
+      ctxUi.fillText("Player1 groundBelow: " + player1.groundBelow,10,110);
+      ctxUi.fillText("Player1 Score: " + player1.score,10,125);
+      if(startPlayer2){
+        ctxUi.strokeText("Player2 Pos: (X: "+ player2.x.toFixed(3) + ", Y: " + player2.y.toFixed(3) + ")",300,50);
+        ctxUi.strokeText("Player2 Velocity: (X: "+ player2.vX + ", Y: " + player2.vY.toFixed(3) + ")",300,65);
+        ctxUi.strokeText("Player2 loop: " + player2.loop,300,80);
+        ctxUi.strokeText("Player2 Distance: "+ distance, 300,95);
+        ctxUi.strokeText("Player2 groundBelow: "+ player2.groundBelow, 300,110);
+        ctxUi.strokeText("Player2 Score: "+ player2.score, 300,125);
+      }
+      if(currentEnemy.length > 0){
+        ctxUi.strokeText("Enemy Pos: (X: "+ currentEnemy[0].x.toFixed(3) + ", Y: " + currentEnemy[0].y.toFixed(3) + ")",600,50);
+        ctxUi.strokeText("Enemy Velocity: (X: "+ currentEnemy[0].vX + ", Y: " + currentEnemy[0].vY.toFixed(3) + ")",600,65);
+        ctxUi.strokeText("Enemy onGround: " + currentEnemy[0].onGround,600,80);
+        ctxUi.strokeText("Enemy Life: "+ currentEnemy[0].life, 600,95);
+        ctxUi.strokeText("Enemy Count: "+ currentEnemy.length, 600,110);
+        ctxUi.strokeText("Enemy Score: "+ currentEnemy[0].score, 600,125);
+      };
+    };
+    //---Debug Display
+    player1.context.clearRect(0,0, play1.width, play1.height);
+    updatePosition(player1);
+    player1.update();
+    player1.render();
+
+    if(startPlayer2){
+      player2.context.clearRect(0,0, play2.width, play2.height);
+      updatePosition(player2);
+      player2.update();
+      player2.render();
+    };
+    checkGameOver();//see if game is over OR calls loop again
+
+  }else if(!gameStart){//UI SPLASH
+    ctxUi.clearRect(0,0,ui.width,ui.height);
+    ctxBack.clearRect(0,0, background.width, background.height);
+    player1.context.clearRect(0,0, play1.width, play1.height);
+    player2.context.clearRect(0,0, play2.width, play2.height);
+
+    landable.forEach(function(item){//redraw platforms
+      ctxBack.drawImage(item.img, item.xStart, item.yStart);
+    });
+    detail.forEach(function(item){//draw background detail
+      ctxBack.drawImage(item.img, item.xStart, item.yStart)
+    });
+
+    ctxUi.drawImage(titleNinja, (background.width/2) -100, 50);
+    ctxUi.drawImage(titleVs, (background.width/2) -30, 200);
+    ctxUi.drawImage(titleZombies, (background.width/2)-100, 300);
+
+    ctxMonster.clearRect(0,0, monster.width, monster.height);//clear monster frame
+    for(var i=0;i<currentEnemy.length; i++){//cycle through currentEnemy array
+      currentEnemy[i].img = currentEnemy[i].runRight;
+      currentEnemy[i].update();//update from SPRITE object
+      currentEnemy[i].render();//draw that zombro
+    };
+
+    player1.update();
+    player1.render();
+    player2.update();
+    player2.render();
+    updateBackgroundItems(-8);
+    checkView();
+    if(landable.length < 8){
+      createGround();
+      createBackgroundDetail(true);
     }
-    currentEnemy[i].render();
+    window.requestAnimationFrame(gameLoop);
   }
-  ctxUi.clearRect(0,0,ui.width,ui.height);
-  //---Debug Display
-  if(debug){
-    ctxUi.font = "12px Arial";
-    ctxUi.fillStyle = "red";
-    ctxUi.fillText("Player1 Pos: (X: "+ player1.x.toFixed(3) + ", Y: " + player1.y.toFixed(3) + ")",10,50);
-    ctxUi.fillText("Player1 Velocity: (X: "+ player1.vX + ", Y: " + player1.vY + ")",10,65);
-    ctxUi.fillText("Player1 onGround: " + player1.onGround,10,80);
-    ctxUi.fillText("Player1 isJumping: " + player1.isJumping,10,95);
-    ctxUi.fillText("Player1 groundBelow: " + player1.groundBelow,10,110);
-    ctxUi.fillText("Player1 Score: " + player1.score,10,125);
-    ctxUi.strokeText("Player2 Pos: (X: "+ player2.x.toFixed(3) + ", Y: " + player2.y.toFixed(3) + ")",300,50);
-    ctxUi.strokeText("Player2 Velocity: (X: "+ player2.vX + ", Y: " + player2.vY.toFixed(3) + ")",300,65);
-    ctxUi.strokeText("Player2 loop: " + player2.loop,300,80);
-    ctxUi.strokeText("Player2 Distance: "+ distance, 300,95)
-    ctxUi.strokeText("Player2 groundBelow: "+ player2.groundBelow, 300,110)
-    ctxUi.strokeText("Player2 Score: "+ player2.score, 300,125)
-    ctxUi.fillStyle = "blue";
-    ctxUi.strokeText("Enemy Pos: (X: "+ currentEnemy[0].x.toFixed(3) + ", Y: " + currentEnemy[0].y.toFixed(3) + ")",600,50);
-    ctxUi.strokeText("Enemy Velocity: (X: "+ currentEnemy[0].vX + ", Y: " + currentEnemy[0].vY.toFixed(3) + ")",600,65);
-    ctxUi.strokeText("Enemy onGround: " + currentEnemy[0].onGround,600,80);
-    ctxUi.strokeText("Enemy Life: "+ currentEnemy[0].life, 600,95)
-    ctxUi.strokeText("Enemy Count: "+ currentEnemy.length, 600,110)
-    ctxUi.strokeText("Enemy Score: "+ currentEnemy[0].score, 600,125)
-  }
-  //---Debug Display
-
-  player1.context.clearRect(0,0, play1.width, play1.height);
-  player2.context.clearRect(0,0, play2.width, play2.height);
-  player1.update();
-  player2.update();
-  player1.render();
-  player2.render();
-  checkGameOver();
-
 }
 
-
-var player1 = sprite({
+var player1 = sprite({ //Player 1 sprite obj
   x: 50,
   y: 30,
   type: 'player',
-  id: 1,
   context: ctxPlay1,
   img: player1IdleRight,
   numberOfFrames: 10,
@@ -415,25 +510,28 @@ var player1 = sprite({
   jumpLeft: player1JumpLeft,
   jumpRight: player1JumpRight
 });
-
-var player2 = sprite({
-  x: 50,
-  y: 30,
-  type: 'player',
-  id: 2,
-  context: ctxPlay2,
-  img: player2IdleRight,
-  numberOfFrames: 10,
-  facing: "right",
-  onGround: false,
-  moveFrame: true,
-  idleLeft: player2IdleLeft,
-  idleRight: player2IdleRight,
-  runLeft: player2RunLeft,
-  runRight: player2RunRight,
-  attackLeft: player2AttackLeft,
-  attackRight: player2AttackRight
-});
+function addPlayer(){
+  if(startPlayer2 && gameStart){
+    player2 = sprite({ //player 2
+      x: 50,
+      y: 30,
+      type: 'player',
+      context: ctxPlay2,
+      img: player2IdleRight,
+      numberOfFrames: 10,
+      facing: "right",
+      onGround: false,
+      moveFrame: true,
+      idleLeft: player2IdleLeft,
+      idleRight: player2IdleRight,
+      runLeft: player2RunLeft,
+      runRight: player2RunRight,
+      attackLeft: player2AttackLeft,
+      attackRight: player2AttackRight
+    });
+  };
+  player2.render();
+};
 
 function spawnEnemy(num){
   for(var i = 0; i<num;i++){
@@ -485,81 +583,111 @@ function spawnEnemy(num){
 }
 
 //When finished loading last image, run gameLoop
-groundTile.onload = function(){
-  //$('.music')[0].play();
-  player2.render();
-  player1.render();
-  spawnEnemy(maxEnemy);
-  createGround();
-  gameLoop();
+function gameInit(){
+  groundTile.onload = function(){
+    $('.title-music')[0].addEventListener('ended', function(){
+      this.currentTime=0;
+      this.play();
+    },false);
+    $('.title-music')[0].play();
+    if(startPlayer2){
+      addPlayer();
+    }
+    gameStart = true;
+    startPlayer2 = true;
+    addPlayer();
+    player1.img = player1.runRight;
+    player1.x = play1.width /2;
+    player1.y = play1.height - groundTile.height + 75;
+    player2.img = player2.runRight;
+    player2.x = play2.width/2 -30;
+    player2.y = play2.height - groundTile.height + 85;
+    gameStart= false;
+    startPlayer2 = false;
+    spawnEnemy(randomNum(70, 20));
+    for(var i=0;i<currentEnemy.length; i++){//cycle through currentEnemy array
+      currentEnemy[i].img = currentEnemy[i].runRight;
+      currentEnemy[i].x = play1.width /2 + randomNum(750, 100);
+      currentEnemy[i].y = play2.height - groundTile.height + 75;
+      currentEnemy[i].update();//update from SPRITE object
+      currentEnemy[i].render();//draw that zombro
+    };
+    createGround();
+    createBackgroundDetail();
+    gameLoop();
+  }
 }
-
 //KeyInput function
-$(document).keydown(function(e){
+$(document).keydown(function(e){//spawn player 2
+  if(e.keyCode === 189){
+    if(startPlayer2){
+      startPlayer2 = false;
+      player2.context.clearRect(0,0, play2.width, play2.height)
+    }else if(gameStart){
+      startPlayer2 = true;
+      addPlayer();
+    };
+  };
   if(e.keyCode === 187){//Toggle Debug
     if(debug){
       debug = false;
     }else{
       debug = true;
-    }
-  }
-  if(e.keyCode === 39){//move right
+    };
+  };
+  if(e.keyCode === 39){//p1 move right
     $('.step')[0].play();
     player1.vX += playerMoveSpeed;
     player1.img = player1RunRight;
     player1.facing = "right";
-  }
-  if(e.keyCode === 37){//move left
+  };
+  if(e.keyCode === 37){//p1 move left
     $('.step')[0].play();
     player1.vX -= playerMoveSpeed;
     player1.img = player1RunLeft;
     player1.facing = "left";
-  }
-  if(e.keyCode === 32){ //Attack
+  };
+  if(e.keyCode === 32){ //p1 Attack
     $('.sword')[0].play();
     player1.attacking = true;
     player1.img = player1.facing === "left" ? player1AttackLeft : player1AttackRight;
-  }
-  if(e.keyCode === 38 && player1.canJump){//up key
+  };
+  if(e.keyCode === 38 && player1.canJump){//p1 up key
     player1.isJumping = true;
     player1.canJump = false;
     player1.onGround = false;
     player1.vY -= playerJumpSpeed;
-  }
-  if(e.keyCode === 40){//Down key
-
-  }
-  if(e.keyCode === 68){//right D key && player2
-
+  };
+  if(e.keyCode === 68 && startPlayer2){//p2 right D
     player2.vX += playerMoveSpeed;
     player2.facing = "right";
     player2.img = player2RunRight;
-
-  }
-  if(e.keyCode === 65){//Left A key
+  };
+  if(e.keyCode === 65 && startPlayer2){//Left A key
     player2.vX -= playerMoveSpeed;
     player2.facing = "left";
     player2.img = player2RunLeft;
-  }
-  if(e.keyCode === 70){//P2 Attack F key
+  };
+  if(e.keyCode === 70 && startPlayer2){//P2 Attack F key
     $('.sword')[0].play();
     player2.attacking = true;
     player2.img = player2.facing === "left" ? player2AttackLeft : player2AttackRight;
-  }
-  if(e.keyCode === 87 && player2.canJump){//P2 Jump
+  };
+  if(e.keyCode === 87 && player2.canJump && startPlayer2){//P2 Jump
     player2.isJumping = true;
     player2.canJump = false;
     player2.onGround = false;
     player2.vY -= playerJumpSpeed;
-  }
+  };
 });
 
 $(document).keyup(function(e){
-  if(e.keyCode === 32){
+  if(e.keyCode === 32){//change from attacking on key up
     player1.attacking = false;
-  }
-  if(e.keyCode === 70){
+  };
+  if(e.keyCode === 70 && startPlayer2){//change from attacking on key up
     player2.attacking = false;
-  }
+  };
 });
-//gameInit();
+
+gameInit();
