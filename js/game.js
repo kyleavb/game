@@ -198,11 +198,11 @@ function checkCollisions(obj){
           if(item.life <= 0){//Life Zero--Die
             item.dead = true;
             item.vX = 0;
-            item.canMove = false;
             item.img = item.die;
+            item.canMove = false;
             setTimeout(function(){//Remove dead enemy from currentEnemy array after 300 MS
               currentEnemy.splice(currentEnemy.indexOf(item), 1);
-            },300);
+            },400);
           }else{//Not Dead
             var blink = setInterval(function(){//Make Image Flash --!!!! Not working
               item.img.style.opacity = .10;
@@ -408,6 +408,7 @@ function gameLoop(){
       if(currentEnemy[i].canMove){
         moveMonsters(currentEnemy[i])//move monster obj
       };
+      updatePosition(currentEnemy[i]);
       currentEnemy[i].update();//update from SPRITE object
       currentEnemy[i].render();//draw that zombro
     };
@@ -582,6 +583,27 @@ function spawnEnemy(num){
   }
 }
 
+function playGame(){
+  $('body').fadeOut(1000);
+  $('body').fadeIn(2000);
+  setTimeout(function(){
+    ctxUi.clearRect(0,0,ui.width,ui.height);
+    ctxBack.clearRect(0,0, background.width, background.height);
+    player1.context.clearRect(0,0, play1.width, play1.height);
+    player2.context.clearRect(0,0, play2.width, play2.height);
+    landable = [];
+    currentEnemy = [];
+    detail = [];
+    tilePos = 0;
+    createGround();
+    createBackgroundDetail();
+    player1.x = 30
+    player2.x = 30;
+    gameStart = true;
+  }, 1000);
+  $(".title-music")[0].pause()
+  $('.music')[0].play();
+}
 //When finished loading last image, run gameLoop
 function gameInit(){
   groundTile.onload = function(){
@@ -589,6 +611,7 @@ function gameInit(){
       this.currentTime=0;
       this.play();
     },false);
+    $('.title-music')[0].volume = .5;
     $('.title-music')[0].play();
     if(startPlayer2){
       addPlayer();
@@ -612,6 +635,16 @@ function gameInit(){
       currentEnemy[i].update();//update from SPRITE object
       currentEnemy[i].render();//draw that zombro
     };
+    $('.player1').on('click', function(){
+      startPlayer2 = false;
+      playGame();
+      $('.button').hide();
+    })
+    $('.player2').on('click', function(){
+      startPlayer2 = true;
+      playGame();
+      $('.button').hide();
+    })
     createGround();
     createBackgroundDetail();
     gameLoop();

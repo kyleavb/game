@@ -1,11 +1,16 @@
 html body{
+  position: absolute;
   margin: 0;
   padding: 0;
   text-align: center;
 }
+.button{
+  margin-top: 20%;
+  left: 40%;
+  position: relative;
+  margin-bottom: 15%;
+}
 .board{
-  margin: auto;
-  text-align: center;
   background: lightblue;
 }
 #background{
@@ -25,5 +30,5 @@ html body{
   position: absolute;
 }
 #ui{
-  position: relative;
+  position: absolute;
 }
