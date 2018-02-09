@@ -9,18 +9,17 @@ var ctxPlay2 = play2.getContext("2d");
 var ui = document.getElementById("ui");
 var ctxUi = ui.getContext("2d");
 var canvas = $(".game");
-for(var i=0;i<canvas.length;i++){
-  canvas[i].width = $(window).innerWidth()-30;
-  canvas[i].height = $(window).innerHeight()-30;
+for(var i=0;i<canvas.length;i++){//Setting width/height of canvas to size of display frame
+  canvas[i].width = $(window).innerWidth();
+  canvas[i].height = $(window).innerHeight();
 }
-var moreZombies = true;
 var distance = 0;
-var maxEnemy = 50;
-var maxDetail = 50;
+var maxEnemy = 100;
+var maxDetail = 25;
 var debug = false;
 var monsterMoveSpeed = 2;
 var playerMoveSpeed = 5;
-var playerJumpSpeed = 25;
+var playerJumpSpeed = 205;
 var detail = [];
 var backgroundDetail = [];
 var landable = [];
@@ -80,14 +79,18 @@ femaleZomIdleRight.src = "img/femaleZombie/femaleZombieIdleRight.png"
 femaleZomIdleLeft = new Image;
 femaleZomIdleLeft.src = "img/femaleZombie/femaleZombieIdleLeft.png"
 //----------------Game Images -----------------------------
-for(var i=0;i<21;i++){
+for(var i=0;i<21;i++){//creating array of background objects
   backgroundDetail[i] = new Image;
   backgroundDetail[i].src = "img/Objects/Object_"+ (i+1) + ".png";
 }
-
+var platStart = new Image;
+platStart.src = "img/ground/Platform/platStart.png";
+var platFill = new Image;
+platFill.src = "img/ground/Platform/platFill.png";
+var platEnd = new Image;
+platEnd.src = "img/ground/Platform/platEnd.png"
 var groundTile = new Image;
 groundTile.src = "img/ground/Tile_11.png"
-
 
 //ground object constructor
 function groundObject(options){
@@ -164,21 +167,19 @@ function sprite(options){
       }
       updatePosition(that);
       if(this.attacking){
-        var hits = []
+        var hits = [];
         checkCollisions(this, hits);
       }
-    }else{
-
     }
   }
   return that;
-}
+};
 
 function checkCollisions(obj, hits){
-  var playerHitBox = {x:obj.x, y:obj.y, width:obj.img.width, height: obj.img.height}
+  var attackerHitBox = {x:obj.x, y:obj.y, width:obj.img.width, height: obj.img.height / obj.numberOfFrames}
   currentEnemy.forEach(function(item){
-    var enemyHitBox = {x: item.x, y:item.y, width: item.img.width,height: item.img.height}
-    if (playerHitBox.x < enemyHitBox.x + enemyHitBox.width && playerHitBox.x + playerHitBox.width > enemyHitBox.x && playerHitBox.y < enemyHitBox.y + enemyHitBox.height && playerHitBox.height + playerHitBox.y > enemyHitBox.y) {
+    var enemyHitBox = {x: item.x, y:item.y, width: item.img.width, height: item.img.height / item.numberOfFrames}
+    if (attackerHitBox.x < enemyHitBox.x + enemyHitBox.width && attackerHitBox.x + attackerHitBox.width > enemyHitBox.x && attackerHitBox.y < enemyHitBox.y + enemyHitBox.height && attackerHitBox.height + attackerHitBox.y > enemyHitBox.y) {
       if(item.hittable){
         $('.hit')[0].play();
         item.hittable = false;
@@ -207,8 +208,8 @@ function checkCollisions(obj, hits){
       }
       hits.push(item);
     }
-  })
-}
+  });
+};
 
 function updatePosition(obj){
   if(obj.vY > 0){
@@ -235,11 +236,9 @@ function updatePosition(obj){
       obj.vY = 0;
     }
   }
-
   obj.vX *= friction;
   obj.vY *= friction;
   obj.vX *= gravity;
-  //obj.vY += gravity;
   obj.x += obj.vX;
   obj.y += obj.vY;
 
@@ -248,10 +247,6 @@ function updatePosition(obj){
     obj.img = obj.facing === "left" ? obj.idleLeft: obj.idleRight;
     obj.imgWidth = obj.img.width;
     obj.imgHeight = obj.img.height;
-  }
-
-  if(Math.round(obj.vY) === 0){
-    obj.vY = 0
   }
 }
 
@@ -343,21 +338,20 @@ function checkGameOver(){
 
 //------------------------GAME LOOOOOOOOOPPPP------------------------------
 function gameLoop(){
-  checkView();
-  if(currentEnemy.length <=0)
-  if(moreZombies){
+  checkView();//Remove any thing out of frame
+  if(currentEnemy.length <=0){
     spawnEnemy(maxEnemy);
   }
-  ctxBack.clearRect(0,0, background.width, background.height)
-  landable.forEach(function(item){//redraw background
+  ctxBack.clearRect(0,0, background.width, background.height);//clear background
+  landable.forEach(function(item){//redraw platforms
+    ctxBack.drawImage(item.img, item.xStart, item.yStart);
+  });
+  detail.forEach(function(item){//draw background detail
     ctxBack.drawImage(item.img, item.xStart, item.yStart)
   });
-  detail.forEach(function(item){
-    ctxBack.drawImage(item.img, item.xStart, item.yStart)
-  });
-  ctxMonster.clearRect(0,0, monster.width, monster.height)
-  for(var i=0;i<currentEnemy.length; i++){
-    currentEnemy[i].update();
+  ctxMonster.clearRect(0,0, monster.width, monster.height);//clear monster frame
+  for(var i=0;i<currentEnemy.length; i++){//cycle through currentEnemy array
+    currentEnemy[i].update();//run update
     if(currentEnemy[i].canMove){
       moveMonsters(currentEnemy[i])
     }
