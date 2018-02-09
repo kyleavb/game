@@ -14,11 +14,14 @@ for(var i=0;i<canvas.length;i++){
   canvas[i].height = $(window).innerHeight()-30;
 }
 var moreZombies = true;
-var maxEnemy = 20;
+var maxEnemy = 5;
+var maxDetail = 20;
 var debug = false;
 var monsterMoveSpeed = 2;
 var playerMoveSpeed = 5;
 var playerJumpSpeed = 25;
+var detail = [];
+var backgroundDetail = [];
 var landable = [];
 var currentEnemy = [];
 var gravity = .98;
@@ -76,6 +79,11 @@ femaleZomIdleRight.src = "img/femaleZombie/femaleZombieIdleRight.png"
 femaleZomIdleLeft = new Image;
 femaleZomIdleLeft.src = "img/femaleZombie/femaleZombieIdleLeft.png"
 //----------------Game Images -----------------------------
+for(var i=0;i<21;i++){
+  backgroundDetail[i] = new Image;
+  backgroundDetail[i].src = "img/Objects/Object_"+ (i+1) + ".png";
+}
+
 var groundTile = new Image;
 groundTile.src = "img/ground/Tile_11.png"
 
@@ -100,6 +108,7 @@ function sprite(options){
   that.type = options.type;
   that.id = options.id;
   that.canMove = true;
+  that.moveFrame = options.moveFrame;
   that.move = false;
   that.onGround = options.onGround;
   that.groundBelow = false;
@@ -113,7 +122,7 @@ function sprite(options){
   that.facing = "right";
   that.frameIndex = 0,
   that.tickCount = 0,
-  that.ticksPerFrame = 3;
+  that.ticksPerFrame = 2;
   that.numberOfFrames = options.numberOfFrames,
   that.loop = true,
   that.context = options.context,
@@ -191,7 +200,7 @@ function checkCollisions(obj, hits){
           setTimeout(function(){
             clearInterval(blink)
             item.hittable = true;
-          }, 1000);
+          }, 500);
         }
       }
       hits.push(item);
@@ -203,9 +212,11 @@ function updatePosition(obj){
   if(obj.vY > 0){
     obj.isJumping = false;
   }
-  if(obj.x > play1.width - 50){
-    obj.vX  -= 7
-  }else if(obj.x < 10){
+
+  if(obj.x > play1.width - 350 && obj.moveFrame === true){
+    obj.x = obj.x-10
+    updateGround(-obj.vX)
+  }else if(obj.x < 10 && obj.moveFrame === true){
     obj.vX += 7
   }
   if(!obj.onGround || !obj.groundBelow){
@@ -247,33 +258,44 @@ function randomNum(max){
 }
 
 function createGround(){
-  var numOfTile = background.width / 256;
+  var numOfTile = background.width*2 / 256;
   var tilePos = 0;
   for(var i=0; i<= numOfTile; i++){
     var rock = groundObject({
       xStart:tilePos,
       xEnd: tilePos+groundTile.width,
-      yStart: background.height - groundTile.height,
+      yStart: background.height - groundTile.height + 50,
       yEnd: background.height,
       img: groundTile
     })
     landable.push(rock);
     tilePos += 255;
   }
-  var x = randomNum(background.width)
-  var y = randomNum(background.height)
-  var rando = groundObject({
-    xStart: 375,
-    xEnd: 375+groundTile.width,
-    yStart: 350,
-    yEnd: 350+20,
-    img: groundTile
-  })
-  landable.push(rando);
+  //Foilage add
+  for(var i=0;i<maxDetail; i++){
+    var detailNum = randomNum(21);
+    var backObj = groundObject({
+      xStart: randomNum(background.width *2),
+      //xEnd: randomNum(background.width *2),
+      yStart: background.height - backgroundDetail[detailNum].height - 90,
+      //yEnd: background.height - groundTile.height + 50,
+      img: backgroundDetail[detailNum]
+    });
+    detail.push(backObj);
+  }
+
+
 }
 
 function updateGround(x){
   landable.forEach(function(item){
+    item.xStart += x;
+    item.xEnd += x;
+  });
+  for(var i=0; i<currentEnemy.length; i++){
+    currentEnemy[i].x += x;
+  }
+  detail.forEach(function(item){
     item.xStart += x;
   })
 }
@@ -295,14 +317,33 @@ function moveMonsters(obj){
     obj.canMove = true;
   },moveDuration);
 }
+
+function checkEnemy(){
+  currentEnemy.forEach(function(item){
+    if(item.x < 0 || item.y > background.height){
+      currentEnemy.splice(currentEnemy.indexOf(item),1);
+    }
+  })
+}
+
+
+function checkGameOver(){
+  //if() 2 player check
+  window.requestAnimationFrame(gameLoop);
+}
+
 //------------------------GAME LOOOOOOOOOPPPP------------------------------
 function gameLoop(){
+  checkEnemy();
   if(currentEnemy.length <=0)
   if(moreZombies){
     spawnEnemy(maxEnemy);
   }
   ctxBack.clearRect(0,0, background.width, background.height)
   landable.forEach(function(item){//redraw background
+    ctxBack.drawImage(item.img, item.xStart, item.yStart)
+  });
+  detail.forEach(function(item){
     ctxBack.drawImage(item.img, item.xStart, item.yStart)
   });
   ctxMonster.clearRect(0,0, monster.width, monster.height)
@@ -314,8 +355,6 @@ function gameLoop(){
     currentEnemy[i].render();
   }
   ctxUi.clearRect(0,0,ui.width,ui.height);
-
-
   //---Debug Display
   if(debug){
     ctxUi.font = "12px Arial";
@@ -337,7 +376,7 @@ function gameLoop(){
     ctxUi.strokeText("Enemy Velocity: (X: "+ currentEnemy[0].vX + ", Y: " + currentEnemy[0].vY.toFixed(3) + ")",600,65);
     ctxUi.strokeText("Enemy onGround: " + currentEnemy[0].onGround,600,80);
     ctxUi.strokeText("Enemy Life: "+ currentEnemy[0].life, 600,95)
-    ctxUi.strokeText("Enemy groundBelow: "+ currentEnemy[0].groundBelow, 600,110)
+    ctxUi.strokeText("Enemy Count: "+ currentEnemy.length, 600,110)
     ctxUi.strokeText("Enemy Score: "+ currentEnemy[0].score, 600,125)
   }
 
@@ -349,7 +388,8 @@ function gameLoop(){
   player2.update();
   player1.render();
   player2.render();
-  window.requestAnimationFrame(gameLoop);
+  checkGameOver();
+
 }
 
 
@@ -363,6 +403,7 @@ var player1 = sprite({
   numberOfFrames: 10,
   facing: "right",
   onGround: false,
+  moveFrame: true,
   idleLeft: player1IdleLeft,
   idleRight: player1IdleRight,
   runLeft: player1RunLeft,
@@ -383,6 +424,7 @@ var player2 = sprite({
   numberOfFrames: 10,
   facing: "right",
   onGround: false,
+  moveFrame: true,
   idleLeft: player2IdleLeft,
   idleRight: player2IdleRight,
   runLeft: player2RunLeft,
@@ -406,6 +448,7 @@ function spawnEnemy(num){
         loop: true,
         facing: "right",
         onGround: false,
+        moveFrame: false,
         die: maleZomDie,
         idleLeft: maleZomIdleLeft,
         idleRight: maleZomIdleRight,
