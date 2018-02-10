@@ -13,13 +13,23 @@ for(var i=0;i<canvas.length;i++){//Setting width/height of canvas to size of dis
   canvas[i].width = $(window).innerWidth();
   canvas[i].height = $(window).innerHeight();
 }
+var flash = true;
+setInterval(function(){
+  if(flash){
+    flash = false;
+  }else{
+    flash = true;
+  }
+}, 2000);
+var level = 1;
 var tilePos = 0;
 var gameStart = false;
 var debug = false;
 var startPlayer2 = false;
 var player2 = {};
+var playerLives = 5;
 var distance = 0;
-var maxEnemy = 20;
+var maxEnemy = 0;
 var maxDetail = 25;
 var monsterMoveSpeed = 5;
 var playerMoveSpeed = 5;
@@ -48,6 +58,8 @@ var player1JumpRight = new Image;
 player1JumpRight.src = "img/player1/player1JumpRight.png";
 var player1JumpLeft = new Image;
 player1JumpLeft.src = "img/player1/player1JumpLeft.png";
+var player1Lives = new Image;
+player1Lives.src = "img/player1/lives.png"
 //----------------Player2 Image -----------------------------
 var player2AttackRight = new Image;
 player2AttackRight.src = "img/player2/player2AttackRight.png"
@@ -61,6 +73,8 @@ var player2RunRight = new Image;
 player2RunRight.src = "img/player2/player2RunRight.png";
 var player2RunLeft = new Image;
 player2RunLeft.src = "img/player2/player2RunLeft.png"
+var player2Lives = new Image;
+player2Lives.src = "img/player2/lives.png"
 //----------------Enemery Images -----------------------------
 //Male
 var maleZomRight = new Image;
@@ -130,7 +144,7 @@ function sprite(options){
   that.attacking = false;
   that.canJump = true;
   that.isJumping = false;
-  that.life = 1,
+  that.life = options.life;
   that.dead = false;
   that.hittable = true;
   that.score = 0;
@@ -379,10 +393,22 @@ function checkView(){//see if non player objects have moved out of frame
     };
   });
   if(player1.y > background.height){
-    player1.dead = true;
+    player1.life -= 1;
+    if(player1.life > 0){
+      player1.x = 50;
+      player1.y = 10
+    }else{
+      player1.dead = true;
+    }
   }
   if(startPlayer2 && player2.y > background.height){
-    player2.dead = true;
+    player2.life -= 1;
+    if(player2.life > 0){
+      player2.x = 50;
+      player2.y = 0;
+    }else{
+      player2.dead = true;
+    }
   }
 };
 
@@ -409,6 +435,7 @@ function checkGameOver(){//if player death --!!!! not implemented THEY ARE IMORT
     },1500)
   }
 }
+
 //------------------------GAME LOOOOOOOOOPPPP------------------------------
 function gameLoop(){
   if(gameStart){
@@ -461,6 +488,45 @@ function gameLoop(){
       };
     };
     //---Debug Display
+
+    //UI Display
+    ctxUi.font = "50px Impact";
+    ctxUi.fillStyle = "#320636";
+    ctxUi.fillText("Player 1 Score: " + player1.score, 10, 75);
+    var playerInc = 10
+    for(var i=0; i<player1.life;i++){
+      ctxUi.drawImage(player1Lives, playerInc, 95);
+      playerInc += player1Lives.width;
+    }
+    if(player1.life < 0){
+      ctxUi.fillText("Game Over", 10, 125);
+    }
+    if(!startPlayer2){
+      if(flash){
+        ctxUi.font = "50px Impact";
+        ctxUi.fillStyle = "#FF6666";
+        ctxUi.fillText("Join current Game", background.width - 500, 75);
+      };
+      if(!flash){
+        ctxUi.font = "50px Impact";
+        ctxUi.fillStyle = "#FF6666";
+        ctxUi.fillText("Press number 2 to", background.width - 500, 75);
+      };
+    }else{
+      ctxUi.font = "50px Impact";
+      ctxUi.fillStyle = "#FF6666";
+      ctxUi.fillText("Player 2 Score: " + player2.score, background.width - 500, 75);
+      var playerInc = background.width - 500
+      for(var i=0; i<player2.life;i++){
+        ctxUi.drawImage(player2Lives, playerInc, 95);
+        playerInc += player2Lives.width;
+      }
+      if(player2.life < 0){
+        ctxUi.fillText("Game Over", background.width - 500, 125);
+      }
+    }
+
+
     if(player1.dead === false){
       player1.context.clearRect(0,0, play1.width, play1.height);
       updatePosition(player1);
@@ -473,9 +539,7 @@ function gameLoop(){
       player2.update();
       player2.render();
     };
-    //window.requestAnimationFrame(gameLoop);
     checkGameOver();//see if game is over OR calls loop again
-
   }else if(!gameStart){//UI SPLASH
     ctxUi.clearRect(0,0,ui.width,ui.height);
     ctxBack.clearRect(0,0, background.width, background.height);
@@ -521,6 +585,7 @@ var player1 = sprite({ //Player 1 sprite obj
   context: ctxPlay1,
   img: player1IdleRight,
   numberOfFrames: 10,
+  life: 3,
   facing: "right",
   onGround: false,
   moveFrame: true,
@@ -545,6 +610,7 @@ function addPlayer(){
       facing: "right",
       onGround: false,
       moveFrame: true,
+      life: 3,
       idleLeft: player2IdleLeft,
       idleRight: player2IdleRight,
       runLeft: player2RunLeft,
@@ -572,6 +638,7 @@ function spawnEnemy(num){
         facing: "right",
         onGround: false,
         moveFrame: false,
+        life: 1,
         die: maleZomDie,
         idleLeft: maleZomIdleLeft,
         idleRight: maleZomIdleRight,
@@ -593,6 +660,7 @@ function spawnEnemy(num){
         facing: "right",
         onGround: false,
         die: maleZomDie,
+        life: 1,
         idleLeft: femaleZomIdleLeft,
         idleRight: femaleZomIdleRight,
         runLeft: femaleZomLeft,
@@ -628,16 +696,16 @@ function playGame(){
 }
 //When finished loading last image, run gameLoop
 function gameInit(){
-  groundTile.onload = function(){
+  groundTile.onload = function(){//ensures all image files are loaded
     $('.title-music')[0].addEventListener('ended', function(){
       this.currentTime=0;
       this.play();
     },false);
     $('.title-music')[0].volume = .5;
     $('.title-music')[0].play();
-    if(startPlayer2){
-      addPlayer();
-    }
+    // if(startPlayer2){
+    //   addPlayer();
+    // }
     gameStart = true;
     startPlayer2 = true;
     addPlayer();
