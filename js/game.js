@@ -21,7 +21,9 @@ setInterval(function(){
     flash = true;
   }
 }, 2000);
+var genesis = 0;
 var level = 1;
+var maxGenesis = 2;
 var tilePos = 0;
 var gameStart = false;
 var debug = false;
@@ -114,9 +116,13 @@ platStart.src = "img/ground/Platform/platStart.png";
 var platFill = new Image;
 platFill.src = "img/ground/Platform/platFill.png";
 var platEnd = new Image;
-platEnd.src = "img/ground/Platform/platEnd.png"
+platEnd.src = "img/ground/Platform/platEnd.png";
+var groundEndTile = new Image;
+groundEndTile.src = "img/ground/Tile_3.png";
+var groundStartTile = new Image;
+groundStartTile.src = "img/ground/Tile_1.png";
 var groundTile = new Image;
-groundTile.src = "img/ground/Tile_11.png"
+groundTile.src = "img/ground/Tile_11.png";
 
 //ground object constructor
 function groundObject(options){
@@ -141,7 +147,7 @@ function sprite(options){
   that.move = false;
   that.onGround = options.onGround;
   that.groundBelow = false;
-  that.attacking = false;
+  that.attacking = options.attacking;
   that.canJump = true;
   that.isJumping = false;
   that.life = options.life;
@@ -230,7 +236,7 @@ function checkCollisions(obj){
       }
     });
   }else{ //Monster Attack
-    //Not Impimented yet
+
   }
 };
 
@@ -238,8 +244,8 @@ function updatePosition(obj){
   if(obj.vY > 0){//if no longer going up for jump - used for detecting on ground
     obj.isJumping = false;
   }
-  if(obj.x > play1.width - 350 && obj.moveFrame === true){//scroll Right
-    obj.x = obj.x-10; //keep player relativly in position
+  if(obj.x > play1.width - 550 && obj.moveFrame === true){//scroll Right
+    obj.x = obj.x- 10; //keep player relativly in position
     updateBackgroundItems(-obj.vX); //move background Elements to left while player keeps pushing frame
   }else if(obj.x < 10 && obj.moveFrame === true){//keep players from going back (left)
     obj.vX += 7
@@ -251,7 +257,7 @@ function updatePosition(obj){
   }
   obj.groundBelow = false; //force below to prove ground
   for(var i=0; i<landable.length; i++){//Detect Landable land
-    if(obj.x > landable[i].xStart && obj.x < landable[i].xEnd && obj.y>landable[i].yStart && obj.y < landable[i].yEnd && !obj.isJumping){
+    if(obj.x + obj.img.width > landable[i].xStart && obj.x  < landable[i].xEnd && obj.y + obj.img.height/obj.numberOfFrames >landable[i].yStart && obj.y + obj.img.height/obj.numberOfFrames < landable[i].yEnd && !obj.isJumping){
       obj.onGround = true;
       obj.groundBelow = true;
       obj.canJump = true;
@@ -291,22 +297,136 @@ function getLastX(arr){
 }
 
 function createGround(){ //creates baseline floor for game 2x width of screen width
-  var numOfTile = background.width*2 / groundTile.width;
-  if(tilePos > 0){
-    var end = getLastX(landable);
-    tilePos = end.xEnd;
-  }
+  if(gameStart){
+    genesis += 1;
+    var numOfTile = background.width*2 / groundTile.width;
+    if(tilePos > 0){
+      var end = getLastX(landable);
+      tilePos = end.xEnd;
+    }
+    for(var i=0; i<=numOfTile; i++){
+      if(randomNum(2) && randomNum(2) && randomNum(2)){
+        var platformLength = randomNum(4)+2;
+        console.log("plat: " + platformLength);
+        var platformStartX = randomNum(background.width*2, background.width);
+        if(platformLength === 2){
+          var rock = groundObject({
+            xStart:platformStartX,
+            xEnd: platformStartX+platStart.width,
+            yStart: 400,
+            yEnd: 415,
+            img: platStart
+          });
+          platformStartX += platStart.width
+          landable.push(rock);
+          var rock = groundObject({
+            xStart:platformStartX,
+            xEnd: platformStartX + platEnd.width,
+            yStart: 400,
+            yEnd: 415,
+            img: platEnd
+            });
+          landable.push(rock);
+        }else{
+          for(var i=1; i<= platformLength; i++){
+            if(i === 1){
+              var rock = groundObject({
+                xStart:platformStartX,
+                xEnd: platformStartX+platStart.width,
+                yStart: 400,
+                yEnd: 415,
+                img: platStart
+              });
+              platformStartX += platStart.width
+              landable.push(rock);
+            }
+           if(i > 1 && i < platformLength){
+             var rock = groundObject({
+               xStart:platformStartX,
+               xEnd: platformStartX+platFill.width,
+               yStart: 400,
+               yEnd: 415,
+               img: platFill
+             });
+             platformStartX += platFill.width
+             landable.push(rock);
+           }
+            if(i === platformLength){
+              var rock = groundObject({
+                xStart:platformStartX,
+                xEnd: platformStartX + platEnd.width,
+                yStart: 400,
+                yEnd: 415,
+                img: platEnd
+                });
+              landable.push(rock);
+            }
 
-  for(var i=0; i<= numOfTile; i++){
-    var rock = groundObject({
-      xStart:tilePos,
-      xEnd: tilePos+groundTile.width,
-      yStart: background.height - groundTile.height + 50,
-      yEnd: background.height,
-      img: groundTile
-    })
-    landable.push(rock);
-    tilePos += groundTile.width;
+          }
+        }
+      }
+      if(i === 0){
+        var rock = groundObject({
+          xStart:tilePos,
+          xEnd: tilePos+groundTile.width,
+          yStart: background.height - groundTile.height + 10,
+          yEnd: background.height,
+          img: groundTile
+        });
+        landable.push(rock);
+        tilePos += groundTile.width;
+      }else{
+        var addPit = randomNum(2) && randomNum(2) && randomNum(2) ? true:false;
+        if(addPit){
+          console.log("pit!");
+          var rock = groundObject({
+            xStart:tilePos,
+            xEnd: tilePos+groundEndTile.width,
+            yStart: background.height - groundEndTile.height + 10,
+            yEnd: background.height,
+            img: groundEndTile
+          });
+          landable.push(rock);
+          tilePos += groundEndTile.width + 150;
+
+          var rock = groundObject({
+            xStart:tilePos,
+            xEnd: tilePos+groundStartTile.width,
+            yStart: background.height - groundStartTile.height + 10,
+            yEnd: background.height,
+            img: groundStartTile
+          });
+          landable.push(rock);
+          tilePos += groundStartTile.width;
+        }
+        var rock = groundObject({
+          xStart:tilePos,
+          xEnd: tilePos+groundTile.width,
+          yStart: background.height - groundTile.height + 10,
+          yEnd: background.height,
+          img: groundTile
+        });
+        landable.push(rock);
+        tilePos += groundTile.width;
+      }
+    }
+  }else{
+    var numOfTile = background.width*2 / groundTile.width;
+    if(tilePos > 0){
+      var end = getLastX(landable);
+      tilePos = end.xEnd;
+    }
+    for(var i=0; i<= numOfTile; i++){
+      var rock = groundObject({
+        xStart:tilePos,
+        xEnd: tilePos+groundTile.width,
+        yStart: background.height - groundTile.height + 10,
+        yEnd: background.height,
+        img: groundTile
+      });
+      landable.push(rock);
+      tilePos += groundTile.width;
+    }
   }
 }
 
@@ -316,7 +436,7 @@ function createBackgroundDetail(offScreen){//create background detail
       var detailNum = randomNum(21);
       var backObj = groundObject({
         xStart: randomNum(background.width*2),
-        yStart: background.height - backgroundDetail[detailNum].height - 90,
+        yStart: background.height - backgroundDetail[detailNum].height - 120,
         img: backgroundDetail[detailNum]
       });
       detail.push(backObj);
@@ -327,7 +447,7 @@ function createBackgroundDetail(offScreen){//create background detail
       var detailNum = randomNum(21);
       var backObj = groundObject({
         xStart: randomNum(background.width + getLastX(landable).xEnd, background.width),
-        yStart: background.height - backgroundDetail[detailNum].height - 90,
+        yStart: background.height - backgroundDetail[detailNum].height - 120,
         img: backgroundDetail[detailNum]
       });
       detail.push(backObj);
@@ -347,7 +467,7 @@ function updateBackgroundItems(x){//moves all things not Players
     detail.forEach(function(item){//cycle through background detail
       item.xStart += x;
     });
-  }else{
+  }else{// UI Movement
     landable.forEach(function(item){//cycle through landable objects
       item.xStart += x;
       item.xEnd += x;
@@ -440,6 +560,11 @@ function checkGameOver(){//if player death --!!!! not implemented THEY ARE IMORT
 function gameLoop(){
   if(gameStart){
     checkView();//Remove any thing out of frame
+    if(landable.length < 8 && genesis < level* maxGenesis){
+      genesis += 1
+      createBackgroundDetail(true);
+      createGround();
+    }
     if(currentEnemy.length <=0){//if no enemy spawn more
       spawnEnemy(randomNum(maxEnemy)+1);//spawn number between 1-max
     };
@@ -589,6 +714,7 @@ var player1 = sprite({ //Player 1 sprite obj
   facing: "right",
   onGround: false,
   moveFrame: true,
+  attack: false,
   idleLeft: player1IdleLeft,
   idleRight: player1IdleRight,
   runLeft: player1RunLeft,
@@ -610,6 +736,7 @@ function addPlayer(){
       facing: "right",
       onGround: false,
       moveFrame: true,
+      attacking: false,
       life: 3,
       idleLeft: player2IdleLeft,
       idleRight: player2IdleRight,
@@ -638,6 +765,7 @@ function spawnEnemy(num){
         facing: "right",
         onGround: false,
         moveFrame: false,
+        attacking: true,
         life: 1,
         die: maleZomDie,
         idleLeft: maleZomIdleLeft,
@@ -659,6 +787,7 @@ function spawnEnemy(num){
         loop: true,
         facing: "right",
         onGround: false,
+        attacking: true,
         die: maleZomDie,
         life: 1,
         idleLeft: femaleZomIdleLeft,
@@ -676,20 +805,23 @@ function spawnEnemy(num){
 function playGame(){
   $('body').fadeOut(1000);
   $('body').fadeIn(2000);
+
   setTimeout(function(){
+    gameStart = true;
+    player1.x = 30;
+    player1.y = 10;
+    player2.x = 30;
+    player2.y = 10;
     ctxUi.clearRect(0,0,ui.width,ui.height);
     ctxBack.clearRect(0,0, background.width, background.height);
     player1.context.clearRect(0,0, play1.width, play1.height);
     player2.context.clearRect(0,0, play2.width, play2.height);
     landable = [];
-    currentEnemy = [];
     detail = [];
+    currentEnemy = [];
     tilePos = 0;
     createGround();
     createBackgroundDetail();
-    player1.x = 30
-    player2.x = 30;
-    gameStart = true;
   }, 1000);
   $(".title-music")[0].pause()
   $('.music')[0].play();
@@ -711,18 +843,18 @@ function gameInit(){
     addPlayer();
     player1.img = player1.runRight;
     player1.x = play1.width /2;
-    player1.y = play1.height - groundTile.height + 75;
+    player1.y = play1.height - groundTile.height - 65;
     player2.img = player2.runRight;
     player2.x = play2.width/2 -30;
-    player2.y = play2.height - groundTile.height + 85;
+    player2.y = play2.height - groundTile.height - 60;
     player2.dead = true
     gameStart= false;
     startPlayer2 = false;
     spawnEnemy(randomNum(70, 20));
     for(var i=0;i<currentEnemy.length; i++){//cycle through currentEnemy array
       currentEnemy[i].img = currentEnemy[i].runRight;
-      currentEnemy[i].x = play1.width /2 + randomNum(750, 100);
-      currentEnemy[i].y = play2.height - groundTile.height + 75;
+      currentEnemy[i].x = play1.width /2 + randomNum(800, 200);
+      currentEnemy[i].y = play2.height - groundTile.height - randomNum(80, 60);
       currentEnemy[i].update();//update from SPRITE object
       currentEnemy[i].render();//draw that zombro
     };
