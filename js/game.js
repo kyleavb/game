@@ -378,17 +378,37 @@ function checkView(){//see if non player objects have moved out of frame
       detail.splice(detail.indexOf(item), 1);
     };
   });
+  if(player1.y > background.height){
+    player1.dead = true;
+  }
+  if(startPlayer2 && player2.y > background.height){
+    player2.dead = true;
+  }
 };
 
 function checkGameOver(){//if player death --!!!! not implemented THEY ARE IMORTAL!
-  if(player1.dead){
-    if(startPlayer2 && player2.dead){
-
-    }
+  if(player1.dead === false || player2.dead === false){
+    window.requestAnimationFrame(gameLoop)
   }
-  window.requestAnimationFrame(gameLoop);
+  if(startPlayer2 && player2.dead === true && player1.dead === true){
+    console.log("2 player one");
+    $('body').fadeOut(1000);
+    $('.music')[0].pause();
+    $('.lose')[0].play();
+    setTimeout(function(){
+      $('.gameover')[0].play();
+    },1500)
+  }
+  if(!startPlayer2 && player1.dead === true){
+    console.log("1 player death");
+    $('body').fadeOut(1000);
+    $('.music')[0].pause();
+    $('.lose')[0].play();
+    setTimeout(function(){
+      $('.gameover')[0].play();
+    },1500)
+  }
 }
-
 //------------------------GAME LOOOOOOOOOPPPP------------------------------
 function gameLoop(){
   if(gameStart){
@@ -441,17 +461,19 @@ function gameLoop(){
       };
     };
     //---Debug Display
-    player1.context.clearRect(0,0, play1.width, play1.height);
-    updatePosition(player1);
-    player1.update();
-    player1.render();
-
-    if(startPlayer2){
+    if(player1.dead === false){
+      player1.context.clearRect(0,0, play1.width, play1.height);
+      updatePosition(player1);
+      player1.update();
+      player1.render();
+    }
+    if(startPlayer2 && player2.dead === false){
       player2.context.clearRect(0,0, play2.width, play2.height);
       updatePosition(player2);
       player2.update();
       player2.render();
     };
+    //window.requestAnimationFrame(gameLoop);
     checkGameOver();//see if game is over OR calls loop again
 
   }else if(!gameStart){//UI SPLASH
@@ -625,6 +647,7 @@ function gameInit(){
     player2.img = player2.runRight;
     player2.x = play2.width/2 -30;
     player2.y = play2.height - groundTile.height + 85;
+    player2.dead = true
     gameStart= false;
     startPlayer2 = false;
     spawnEnemy(randomNum(70, 20));
@@ -642,6 +665,7 @@ function gameInit(){
     })
     $('.player2').on('click', function(){
       startPlayer2 = true;
+      player2.dead = false;
       playGame();
       $('.button').hide();
     })

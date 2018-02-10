@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <audio class="sword"><source src=sound/swordSwing.m4a></audio>
     <audio class="hit"><source src=sound/zombieHit.mp3></audio>
     <audio class="step"><source src=sound/footStep.wav></audio>
     <audio class="music"><source src=sound/stageMusic.mp3></audio>
     <audio class="title-music"><source src=sound/titleScreenMusic.wav></audio>
+    <audio class="lose"><source src=sound/lose.wav></audio>
+    <audio class="gameover"><source src=sound/gameOver.mp3></audio>
     <title>Ninja Kill Zombie!</title>
     <link rel="stylesheet" href="css/style.css">
     <script
@@ -17,14 +20,15 @@
   </head>
   <body>
     <div class="board splash">
-        <canvas class="game" id="background"></canvas>
-        <canvas class="game" id="play1"></canvas>
-        <canvas class="game" id="play2"></canvas>
-        <canvas class="game" id="monster"></canvas>
-        <canvas class="game" id="ui"></canvas>
-        <button class="button player1" type="button" class="player">1 Player</button><br />
-        <button class="button player2" type="button" class="player">2 Player</button><br />
-        <button class="button credits" type="button" class="player">Credits</button><br />
+
+      <canvas class="game" id="background"></canvas>
+      <canvas class="game" id="play1"></canvas>
+      <canvas class="game" id="play2"></canvas>
+      <canvas class="game" id="monster"></canvas>
+      <canvas class="game" id="ui"></canvas>
+      <button class="button player1" type="button" class="player">1 Player</button><br />
+      <button class="button player2" type="button" class="player">2 Player</button><br />
+      <button class="button credits" type="button" class="player">Credits</button><br />
     </div>
 
     <script src="js/game.js"></script>
