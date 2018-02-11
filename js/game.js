@@ -13,7 +13,7 @@ for(var i=0;i<canvas.length;i++){//Setting width/height of canvas to size of dis
   canvas[i].width = $(window).innerWidth();
   canvas[i].height = $(window).innerHeight();
 }
-var flash = true;
+var flash = true; //value that changes every 2 seconds - for changing display on UI when no second player
 setInterval(function(){
   if(flash){
     flash = false;
@@ -21,27 +21,28 @@ setInterval(function(){
     flash = true;
   }
 }, 2000);
-var genesis = 0;
-var level = 1;
-var maxGenesis = 2;
-var tilePos = 0;
-var gameStart = false;
-var debug = false;
-var startPlayer2 = false;
-var player2 = {};
-var playerLives = 5;
-var distance = 0;
-var maxEnemy = 0;
-var maxDetail = 25;
-var monsterMoveSpeed = 5;
-var playerMoveSpeed = 5;
-var playerJumpSpeed = 25;
-var detail = [];
-var backgroundDetail = [];
-var landable = [];
-var currentEnemy = [];
-var gravity = .98;
-var friction = 0.96;
+var genesis = 0; //counter for how many times we generate ground
+var level = 1; //current level - also used to determine length
+var maxGenesis = 2; //max amount of times ground can be generated.  used to increase level length formula level*maxGenesis.
+var tilePos = 0; //for randomly generated ground.  mainly used for x value storage of where to start next generation
+var gameStart = false; //flag to enable UI on load then when true start game cycle
+var debug = false; //flag to determine if debug menu should display
+var startPlayer2 = false; //flag to indicate if second player is active or not
+var player2 = {}; //empty object to story player2 during UI start
+var playerLives = 5; //easy way to adjust paramater
+var distance = 0; //to measure distance travled --!! not implimented
+var maxEnemy = 0; //variable to indicate how many enemy should populate on screen
+var maxDetail = 25; //amount of backgorund objects to place
+var monsterMoveSpeed = 5; //monster velocity per move
+var playerMoveSpeed = 5; // player velocity per move
+var playerJumpSpeed = 18; //increases player vY to provide jump
+var detail = []; //empty array to store randomly selected background image items
+var backgroundDetail = []; //empty array that will hold all Image reference for backgorund item
+var landable = []; // empty array to hold image items that player can land on
+var currentEnemy = []; //empty array to hold enemry objects when created
+var gravity = .98; //ajustable gravity value
+var friction = 0.96; //ajustable friction value
+
 //Image Loader
 //----------------Player1 Image -----------------------------
 var player1AttackRight = new Image;
@@ -95,9 +96,11 @@ femaleZomRight.src = "img/femaleZombie/femaleZombieWalkRight.png";
 var femaleZomLeft = new Image;
 femaleZomLeft.src = "img/femaleZombie/femaleZombieWalkLeft.png";
 femaleZomIdleRight = new Image;
-femaleZomIdleRight.src = "img/femaleZombie/femaleZombieIdleRight.png"
+femaleZomIdleRight.src = "img/femaleZombie/femaleZombieIdleRight.png";
 femaleZomIdleLeft = new Image;
-femaleZomIdleLeft.src = "img/femaleZombie/femaleZombieIdleLeft.png"
+femaleZomIdleLeft.src = "img/femaleZombie/femaleZombieIdleLeft.png";
+femaleZomDie = new Image;
+femaleZomDie.src = "img/femaleZombie/femaleZombieDie.png";
 //----------------Game Images -----------------------------
 for(var i=0;i<21;i++){//creating array of background objects
   backgroundDetail[i] = new Image;
@@ -159,6 +162,7 @@ function sprite(options){
   that.tickCount = 0,
   that.ticksPerFrame = 2;
   that.numberOfFrames = options.numberOfFrames,
+  that.moveTimer = options.moveTimer
   that.loop = true,
   that.context = options.context,
   that.idleRight = options.idleRight,
@@ -186,19 +190,13 @@ function sprite(options){
   },
 
   that.update = function(){//Update Frame Index for animation and Position
-    if(this.life){
-      this.tickCount += 1;
-      if(that.tickCount >= that.ticksPerFrame){
-        that.tickCount =0;
-        if(that.frameIndex < that.numberOfFrames - 1){
-          that.frameIndex += 1;
-        }else if (that.loop){
-          that.frameIndex =0;
-        }
-      }
-      if(this.attacking){
-        checkCollisions(this);//make attack check collision
-      };
+    that.tickCount += 1;
+    if(that.tickCount >= that.ticksPerFrame && that.frameIndex < that.numberOfFrames - 1){
+      that.frameIndex += 1;
+      that.tickCount = 0;
+    };
+    if(that.loop && that.frameIndex >= that.numberOfFrames - 1){
+      that.frameIndex = 0;
     };
   };
   return that;
@@ -209,20 +207,19 @@ function checkCollisions(obj){
   if(obj.type === "player"){//----------------PLAYER ATTACK-------------------------
     currentEnemy.forEach(function(item){
       var enemyHitBox = {x: item.x, y:item.y, width: item.img.width, height: item.img.height / item.numberOfFrames};
-      if (attackerHitBox.x < enemyHitBox.x + enemyHitBox.width && attackerHitBox.x + attackerHitBox.width > enemyHitBox.x && attackerHitBox.y < enemyHitBox.y + enemyHitBox.height && attackerHitBox.height + attackerHitBox.y > enemyHitBox.y){
+      if(attackerHitBox.x < enemyHitBox.x + enemyHitBox.width && attackerHitBox.x + attackerHitBox.width > enemyHitBox.x && attackerHitBox.y < enemyHitBox.y + enemyHitBox.height && attackerHitBox.height + attackerHitBox.y > enemyHitBox.y){
         if(item.hittable){//Checks if colided item is Hitable
           $('.hit')[0].play();
           item.hittable = false;
           item.life -= 1;
           obj.score += 10;
           if(item.life <= 0){//Life Zero--Die
-            item.dead = true;
-            item.vX = 0;
+            clearInterval(item.moveTimer);
+            item.loop = false;
             item.img = item.die;
-            item.canMove = false;
             setTimeout(function(){//Remove dead enemy from currentEnemy array after 300 MS
               currentEnemy.splice(currentEnemy.indexOf(item), 1);
-            },400);
+            },1000);
           }else{//Not Dead
             var blink = setInterval(function(){//Make Image Flash --!!!! Not working
               item.img.style.opacity = .10;
@@ -244,8 +241,8 @@ function updatePosition(obj){
   if(obj.vY > 0){//if no longer going up for jump - used for detecting on ground
     obj.isJumping = false;
   }
-  if(obj.x > play1.width - 550 && obj.moveFrame === true){//scroll Right
-    obj.x = obj.x- 10; //keep player relativly in position
+  if(obj.x > play1.width - 350 && obj.moveFrame === true){//scroll Right
+    obj.x = obj.x - 10; //keep player relativly in position
     updateBackgroundItems(-obj.vX); //move background Elements to left while player keeps pushing frame
   }else if(obj.x < 10 && obj.moveFrame === true){//keep players from going back (left)
     obj.vX += 7
@@ -262,11 +259,10 @@ function updatePosition(obj){
       obj.groundBelow = true;
       obj.canJump = true;
       obj.vY = 0;
-    }
-  }
+    };
+  };
   //Move Object by velocity
   obj.vX *= friction;
-  obj.vY *= friction;
   obj.vX *= gravity;
   obj.x += obj.vX;
   obj.y += obj.vY;
@@ -313,7 +309,7 @@ function createGround(){ //creates baseline floor for game 2x width of screen wi
           var rock = groundObject({
             xStart:platformStartX,
             xEnd: platformStartX+platStart.width,
-            yStart: 400,
+            yStart: background.height - groundTile.height,
             yEnd: 415,
             img: platStart
           });
@@ -322,7 +318,7 @@ function createGround(){ //creates baseline floor for game 2x width of screen wi
           var rock = groundObject({
             xStart:platformStartX,
             xEnd: platformStartX + platEnd.width,
-            yStart: 400,
+            yStart: background.height - groundTile.height,
             yEnd: 415,
             img: platEnd
             });
@@ -333,7 +329,7 @@ function createGround(){ //creates baseline floor for game 2x width of screen wi
               var rock = groundObject({
                 xStart:platformStartX,
                 xEnd: platformStartX+platStart.width,
-                yStart: 400,
+                yStart: background.height - groundTile.height,
                 yEnd: 415,
                 img: platStart
               });
@@ -344,7 +340,7 @@ function createGround(){ //creates baseline floor for game 2x width of screen wi
              var rock = groundObject({
                xStart:platformStartX,
                xEnd: platformStartX+platFill.width,
-               yStart: 400,
+               yStart: background.height - groundTile.height,
                yEnd: 415,
                img: platFill
              });
@@ -355,7 +351,7 @@ function createGround(){ //creates baseline floor for game 2x width of screen wi
               var rock = groundObject({
                 xStart:platformStartX,
                 xEnd: platformStartX + platEnd.width,
-                yStart: 400,
+                yStart: background.height - groundTile.height,
                 yEnd: 415,
                 img: platEnd
                 });
@@ -491,7 +487,7 @@ function moveMonsters(obj){//to move monsters
     obj.img = obj.runLeft;
     obj.vX = -monsterMoveSpeed;
   };
-  setTimeout(function(){//set timeout till can move again
+  obj.moveTimer = setTimeout(function(){//set timeout till can move again
     obj.canMove = true;
   },moveDuration);
 };
@@ -788,8 +784,8 @@ function spawnEnemy(num){
         facing: "right",
         onGround: false,
         attacking: true,
-        die: maleZomDie,
         life: 1,
+        die: femaleZomDie,
         idleLeft: femaleZomIdleLeft,
         idleRight: femaleZomIdleRight,
         runLeft: femaleZomLeft,
@@ -907,6 +903,7 @@ $(document).keydown(function(e){//spawn player 2
   if(e.keyCode === 32){ //p1 Attack
     $('.sword')[0].play();
     player1.attacking = true;
+    checkCollisions(player1);//make attack check collision
     player1.img = player1.facing === "left" ? player1AttackLeft : player1AttackRight;
   };
   if(e.keyCode === 38 && player1.canJump){//p1 up key
