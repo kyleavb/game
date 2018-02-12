@@ -11,4 +11,4 @@ The first thing I tackled was getting the movement.  This took the most time to 
 
 The next system, animation, was the most challenging.  I was able to find free assets from https://www.gameart2d.com/freebies.html for the player characters and the enemies.  Then by studying this video https://www.youtube.com/watch?v=W0e9Z5pmt-I&t=206s I was able to figure out how to make a callable function that I could feed each individual object and indicate its animation.  This took the most time because I am not good at image manipulation.
 
-The last big system to implement was the programmatically generated environment
+The last big system to implement was the programmatically generated environment.  This was a lot of trouble to have every thing look good and have all the features I wanted.  Randomly generating pits and platforms became difficult.

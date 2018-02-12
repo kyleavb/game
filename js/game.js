@@ -387,7 +387,7 @@ function createGround(){ //creates baseline floor for game 2x width of screen wi
             }
           });
           landable.push(rock);
-          tilePos += groundEndTile.width + randomNum(210, 150);//pit hole width
+          tilePos += groundEndTile.width + randomNum(230, 150);//pit hole width
 
           var rock = groundObject({
             xStart:tilePos,
@@ -397,6 +397,12 @@ function createGround(){ //creates baseline floor for game 2x width of screen wi
             img: groundStartTile
           });
           landable.push(rock);
+          detail.forEach(function(item){
+            if(item.xStart + item.img.width < rock.xStart && item.xStart + item.img.width > rock.xEnd){
+              console.log("removed");
+              detail.splice(detail.indexOf(item), 1);
+            }
+          });
           tilePos += groundStartTile.width;
         }
         var rock = groundObject({
@@ -571,11 +577,11 @@ function gameLoop(){
       spawnEnemy(randomNum(maxEnemy)+1);//spawn number between 1-max
     };
     ctxBack.clearRect(0,0, background.width, background.height);//clear background
-    landable.forEach(function(item){//redraw platforms
-      ctxBack.drawImage(item.img, item.xStart, item.yStart);
-    });
     detail.forEach(function(item){//draw background detail
       ctxBack.drawImage(item.img, item.xStart, item.yStart)
+    });
+    landable.forEach(function(item){//redraw platforms
+      ctxBack.drawImage(item.img, item.xStart, item.yStart);
     });
     ctxMonster.clearRect(0,0, monster.width, monster.height);//clear monster frame
     for(var i=0;i<currentEnemy.length; i++){//cycle through currentEnemy array
@@ -698,8 +704,8 @@ function gameLoop(){
     updateBackgroundItems(-8);
     checkView();
     if(landable.length < 8){
-      createGround();
       createBackgroundDetail(true);
+      createGround();
     }
     window.requestAnimationFrame(gameLoop);
   }
@@ -871,8 +877,8 @@ function gameInit(){
       playGame();
       $('.button').hide();
     })
-    createGround();
     createBackgroundDetail();
+    createGround();
     gameLoop();
   }
 }
