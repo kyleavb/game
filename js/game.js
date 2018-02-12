@@ -32,8 +32,8 @@ var startPlayer2 = false; //flag to indicate if second player is active or not
 var player2 = {}; //empty object to story player2 during UI start
 var playerLives = 5; //easy way to adjust paramater
 var distance = 0; //to measure distance travled --!! not implimented
-var maxEnemy = 0; //variable to indicate how many enemy should populate on screen
-var maxDetail = 100; //amount of backgorund objects to place
+var maxEnemy = 10; //variable to indicate how many enemy should populate on screen
+var maxDetail = 50; //amount of backgorund objects to place
 var monsterMoveSpeed = 5; //monster velocity per move
 var playerMoveSpeed = 5; // player velocity per move
 var playerJumpSpeed = 18; //increases player vY to provide jump
@@ -381,7 +381,7 @@ function createGround(){ //creates baseline floor for game 2x width of screen wi
             img: groundEndTile
           });
           detail.forEach(function(item){
-            if(item.xStart + item.img.width > rock.xEnd|| item.xStart > rock.xEnd+210){
+            if(item.xStart + item.img.width > rock.xEnd || item.xStart > rock.xEnd+210){
               console.log("removed");
               detail.splice(detail.indexOf(item), 1);
             }
