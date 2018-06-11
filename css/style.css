@@ -1,23 +1,35 @@
+@font-face {
+    font-family: imported;
+    src: url("../img/Objects/HighZombie.ttf");
+}
+
 html body{
+  background: black;
   position: absolute;
   margin: 0;
   padding: 0;
   text-align: center;
 }
-.button{
-  margin-top: 20%;
-  left: 40%;
-  position: relative;
-  margin-bottom: 15%;
+.mute{
+  display: absolute;
 }
-.board{
-  background: lightblue;
+.button{
+  position: relative;
+  font-family: imported;
+  font-size: 40px;
+  background: #0066ff;
+  width: 150px;
+  height: 50px;
+  margin-top: 20%;
+  top: 90%;
+  left: 50%;
+  margin-bottom: 15%;
 }
 #background{
   position: absolute;
   background-size: cover;
   background-attachment: fixed;
-  background-image: url('../img/background.png');
+  background-image: url('../img/Objects/Background.png');
 
 }
 #play1{
